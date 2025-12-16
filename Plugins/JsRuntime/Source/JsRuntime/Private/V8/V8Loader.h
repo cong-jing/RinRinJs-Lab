@@ -3,16 +3,18 @@
 #pragma once
 #include "JsRuntimeLogger.h"
 #include "JsRuntimeDefines.h"
-#include "CoreMinimal.h"
+#include "V8/V8ModuleManager.h"
 
 #if defined(_MSC_VER)
-  #pragma warning(push)
-  #pragma warning(disable: 4668)
+#pragma warning(push)
+#pragma warning(disable: 4668)
 #endif
 #include "v8.h"
 #if defined(_MSC_VER)
-  #pragma warning(pop)
+#pragma warning(pop)
 #endif
+
+#include "CoreMinimal.h"
 #include <memory>
 
 class FV8ModuleManager;
@@ -28,6 +30,8 @@ public:
 
 	FV8Loader(const FV8Loader&) = delete;
 	FV8Loader& operator=(const FV8Loader&) = delete;
+
+	void EnsureV8ProcessInitialized();
 
 	/** Initialize V8 engine */
 	void InitializeV8();
@@ -66,7 +70,11 @@ private:
 
 	v8::Global<v8::Context> V8ContextGlobal;
 
-	std::unique_ptr<FV8ModuleManager> JsModuleManager;
+	struct FV8ModuleManagerDeleter
+	{
+		void operator()(FV8ModuleManager* ModuleManager) const { if (ModuleManager) ModuleManager->UnloadAll(); }
+	};
+	std::unique_ptr<FV8ModuleManager, FV8ModuleManagerDeleter> JsModuleManager;
 
 	/** Flag to track if V8 is initialized */
 	bool bIsInitialized;

@@ -17,8 +17,8 @@ void URinRinGameInstance::Init()
 	if (FModuleManager::Get().IsModuleLoaded("JsRuntime"))
 	{
 		FJsRuntimeModule& JsRuntimeModule = FModuleManager::GetModuleChecked<FJsRuntimeModule>("JsRuntime");
-		JsRuntimeModule.StartupModule();
 
+		JsRuntimeModule.InitialzeRuntime();
 		JsRuntimeModule.LoadJsModule("main", // Resolve module ID callback
 			[](std::string_view ReferrerResolvedId,
 				std::string_view RequestSpecifier,
@@ -63,8 +63,7 @@ void URinRinGameInstance::Shutdown()
 	if (FModuleManager::Get().IsModuleLoaded("JsRuntime"))
 	{
 		FJsRuntimeModule& JsRuntimeModule = FModuleManager::GetModuleChecked<FJsRuntimeModule>("JsRuntime");
-		JsRuntimeModule.ShutdownModule();
-		UE_LOG(LogTemp, Log, TEXT("JsRuntime ShutdownModule called from GameInstance"));
+		JsRuntimeModule.StopRuntime();
 	}
 
 	Super::Shutdown();

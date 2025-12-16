@@ -328,17 +328,17 @@ void FV8ModuleManager::ExcuteFunction(std::string_view ModuleId,
 
     // Prepare arguments
     int argc = static_cast<int>(Args.size());
-    std::vector<v8::Local<v8::Value>> argvStorage;
+    /*std::vector<v8::Local<v8::Value>> argvStorage;
     if (argc > 0)
     {
         argvStorage.assign(Args.begin(), Args.end());
     }
-    v8::Local<v8::Value>* argv = argc > 0 ? argvStorage.data() : nullptr;
+    v8::Local<v8::Value>* argv = argc > 0 ? argvStorage.data() : nullptr;*/
 
     // Call function
     UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: calling function argc=%d"), argc);
     v8::Local<v8::Value> ret;
-    if (!TargetFn->Call(ctx, v8::Undefined(isolate), argc, argv).ToLocal(&ret))
+    if (!TargetFn->Call(ctx, v8::Undefined(isolate), argc, Args.data()).ToLocal(&ret))
     {
         if (TryCatch.HasCaught())
         {
@@ -349,20 +349,4 @@ void FV8ModuleManager::ExcuteFunction(std::string_view ModuleId,
     }
 
     OutResult = ret;
-
-    // Log a string representation for convenience (non-intrusive)
-    if (!OutResult.IsEmpty())
-    {
-        v8::Local<v8::String> s;
-        if (OutResult->ToString(ctx).ToLocal(&s))
-        {
-            v8::String::Utf8Value Utf8(isolate, s);
-            const char* cstr = *Utf8 ? *Utf8 : "";
-            UE_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return=%s"), *FString(UTF8_TO_TCHAR(cstr)));
-        }
-        else
-        {
-            UE_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return (non-string)."));
-        }
-    }
 }

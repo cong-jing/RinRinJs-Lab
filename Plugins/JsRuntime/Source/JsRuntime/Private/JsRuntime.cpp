@@ -12,8 +12,9 @@
 #define LOCTEXT_NAMESPACE "FJsRuntimeModule"
 DEFINE_LOG_CATEGORY(LogJs)
 
-void FJsRuntimeModule::StartupModule()
+void FJsRuntimeModule::InitialzeRuntime()
 {
+	UE_LOG(LogJs, Log, TEXT("Intializing JsRuntime..."));
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 #if JS_RUNTIME_V8
 	// Initialize V8 through V8Loader module
@@ -67,8 +68,9 @@ void FJsRuntimeModule::StartupModule()
 	UE_LOG(LogJs, Log, TEXT("JsRuntime module started"));
 }
 
-void FJsRuntimeModule::ShutdownModule()
+void FJsRuntimeModule::StopRuntime()
 {
+	UE_LOG(LogJs, Log, TEXT("Stopping JsRuntime..."));
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
 
@@ -84,16 +86,20 @@ void FJsRuntimeModule::ShutdownModule()
 		ChakraCoreLoader.ShutdownChakraCore();
 	}
 #endif
-	UE_LOG(LogJs, Log, TEXT("JsRuntime module shutdown"));
+	UE_LOG(LogJs, Log, TEXT("JsRuntime stopped"));
 }
 
 void FJsRuntimeModule::LoadJsModule(const std::string_view ModuleName,
 	FJsRuntime::FResolveModuleIdFn InResolve, 
 	FJsRuntime::FLoadSourceByModuleIdFn InLoadSource)
 {
-	UE_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.data()));
 	FV8Loader& V8Loader = FV8Loader::Get();
 	V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
+}
+
+void FJsRuntimeModule::ShutdownModule()
+{
+	StopRuntime();
 }
 
 #undef LOCTEXT_NAMESPACE

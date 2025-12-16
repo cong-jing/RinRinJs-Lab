@@ -11,8 +11,10 @@ class JSRUNTIME_API FJsRuntimeModule : public IModuleInterface
 public:
 
 	/** IModuleInterface implementation */
-	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
+
+	void InitialzeRuntime();
+	void StopRuntime();
 
 	void LoadJsModule(const std::string_view ModuleName,
 		FJsRuntime::FResolveModuleIdFn InResolve,

@@ -24,6 +24,22 @@
 FV8Loader::FV8Loader() = default;
 FV8Loader::~FV8Loader() = default;
 
+void FV8Loader::EnsureV8ProcessInitialized()
+{
+	// V8 requires process-wide initialization only once.
+	static bool bProcessInitialized = false;
+	if (bProcessInitialized) return;
+
+	v8::V8::InitializeICUDefaultLocation(nullptr);
+	v8::V8::InitializeExternalStartupData(nullptr);
+
+	V8Platform = v8::platform::NewSingleThreadedDefaultPlatform();
+	v8::V8::InitializePlatform(V8Platform.get());
+	v8::V8::Initialize();
+
+	bProcessInitialized = true;
+}
+
 void FV8Loader::InitializeV8()
 {
 	if (bIsInitialized)
@@ -31,30 +47,21 @@ void FV8Loader::InitializeV8()
 		UE_LOG(LogJs, Warning, TEXT("V8 already initialized"));
 		return;
 	}
+	EnsureV8ProcessInitialized();
 
-	V8Platform.reset();
+	JsModuleManager.reset();
+	V8ContextGlobal.Reset();
 	ArrayBufferAllocator.reset();
 	V8Isolate.reset();
-	V8ContextGlobal.Reset();
-	bIsInitialized = false;
 
 	UE_LOG(LogJs, Log, TEXT("Initializing V8 engine..."));
-
-	// Step 1: Initialize ICU and external startup data
-	v8::V8::InitializeICUDefaultLocation(nullptr);
-	v8::V8::InitializeExternalStartupData(nullptr);
-
-	// Step 2: Create platform
-	V8Platform = v8::platform::NewSingleThreadedDefaultPlatform();
-
-	v8::V8::InitializePlatform(V8Platform.get());
-	v8::V8::Initialize();
 
 	// Step 3: Create Isolate
 	v8::Isolate::CreateParams create_params;
 	ArrayBufferAllocator.reset(v8::ArrayBuffer::Allocator::NewDefaultAllocator());
 	create_params.array_buffer_allocator = ArrayBufferAllocator.get();
 
+	UE_LOG(LogJs, Log, TEXT("Initializing V8 engine...  5555"));
 	V8Isolate.reset(v8::Isolate::New(create_params));
 
 	if (!V8Isolate)
@@ -79,16 +86,17 @@ void FV8Loader::InitializeV8()
 
 void FV8Loader::ShutdownV8()
 {
+
+	UE_LOG(LogJs, Log, TEXT("Shutting down V8 engine..."));
 	if (!bIsInitialized)
 	{
+
+		UE_LOG(LogJs, Log, TEXT("V8 engine not initialzed. Return."));
 		return;
 	}
 
-	UE_LOG(LogJs, Log, TEXT("Shutting down V8 engine..."));
-
 	if (JsModuleManager)
 	{
-		JsModuleManager->UnloadAll();
 		JsModuleManager.reset();
 	}
 
@@ -109,12 +117,6 @@ void FV8Loader::ShutdownV8()
 	// Delete array buffer allocator
 	ArrayBufferAllocator.reset();
 
-	// Shutdown V8
-	v8::V8::Dispose();
-
-	// Dispose platform
-	V8Platform.reset();
-
 	bIsInitialized = false;
 	UE_LOG(LogJs, Log, TEXT("V8 engine shut down successfully"));
 }
@@ -126,6 +128,7 @@ bool FV8Loader::IsV8Loaded() const
 
 FString FV8Loader::ExecuteJavaScript(const FString& Script)
 {
+	UE_LOG(LogJs, Log, TEXT("ExecuteJavaScript"));
 	if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
 	{
 		UE_LOG(LogJs, Error, TEXT("V8 is not initialized. Cannot execute JavaScript."));
@@ -206,6 +209,7 @@ FString FV8Loader::ExecuteJavaScript(const FString& Script)
 
 void FV8Loader::LoadJsModule(const std::string_view ModuleName, FJsRuntime::FResolveModuleIdFn InResolve, FJsRuntime::FLoadSourceByModuleIdFn InLoadSource)
 {
+	UE_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.data()));
 	if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
 	{
 		UE_LOG(LogJs, Error, TEXT("V8 is not initialized. Cannot load JS module."));
@@ -220,7 +224,7 @@ void FV8Loader::LoadJsModule(const std::string_view ModuleName, FJsRuntime::FRes
 
 	if (!JsModuleManager)
 	{
-		JsModuleManager = std::make_unique<FV8ModuleManager>(isolate, ctx);
+		JsModuleManager.reset(new FV8ModuleManager(isolate, ctx));
 	}
 
 	UE_LOG(LogJs, Log, TEXT("Loading JS module: %s"), *FString(ModuleName.data()));

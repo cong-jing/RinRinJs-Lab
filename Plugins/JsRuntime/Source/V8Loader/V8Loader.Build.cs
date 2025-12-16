@@ -11,16 +11,19 @@ public class V8Loader : ModuleRules
 		
 		// Disable exceptions since V8 requires them
 		bEnableExceptions = true;
-		
-		PublicIncludePaths.AddRange(
+		//bEnableUndefinedIdentifierWarnings = false;
+		UndefinedIdentifierWarningLevel = WarningLevel.Off;
+
+
+        PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
-			}
+				Path.Combine(ModuleDirectory, "../../ThirdParty/v8/include")
+            }
 			);
 
 		PrivateIncludePaths.AddRange(
 			new string[] {
-				Path.Combine(ModuleDirectory, "../../ThirdParty/v8/include")
 			}
 			);
 
@@ -47,8 +50,9 @@ public class V8Loader : ModuleRules
 
 		if (Target.Platform == UnrealTargetPlatform.Win64)
 		{
-			// V8 required definitions for consistency with V8 build
-			PublicDefinitions.AddRange(new string[]
+            //DisableWarnings.Add(4668);
+            // V8 required definitions for consistency with V8 build
+            PublicDefinitions.AddRange(new string[]
 			{
 				"V8_COMPRESS_POINTERS",
 				"V8_31BIT_SMIS_ON_64BIT_ARCH",
@@ -61,7 +65,7 @@ public class V8Loader : ModuleRules
 				"V8_HOST_ARCH_X64=1",
 				
 				// Set other architectures to 0
-				"V8_TARGET_ARCH_IA32=0",
+                "V8_TARGET_ARCH_IA32=0",
 				"V8_TARGET_ARCH_32_BIT=0",
 				"V8_TARGET_ARCH_ARM=0",
 				"V8_TARGET_ARCH_ARM64=0",
@@ -94,6 +98,7 @@ public class V8Loader : ModuleRules
 				"V8_HAS_ATTRIBUTE_NONNULL=0",
 				"V8_HAS_ATTRIBUTE_NOINLINE=0",
 				"V8_HAS_ATTRIBUTE_PRESERVE_MOST=0",
+                "V8_CC_INTEL=0",
 				"V8_HAS_BUILTIN_EXPECT=0",
 				"V8_HAS_ATTRIBUTE_WARN_UNUSED_RESULT=0",
 				"V8_HAS_ATTRIBUTE_WEAK=0",
@@ -102,9 +107,9 @@ public class V8Loader : ModuleRules
 				"USING_V8_SHARED=0",
 				"USING_V8_PLATFORM_SHARED=0"
 			});
-			
-			// Get full path to V8 lib directory (with Release subdirectory)
-			string V8LibPath = Path.GetFullPath(Path.Combine(ModuleDirectory, "../../ThirdParty/v8/lib/Win64/Release"));
+
+            // Get full path to V8 lib directory (with Release subdirectory)
+            string V8LibPath = Path.GetFullPath(Path.Combine(ModuleDirectory, "../../ThirdParty/v8/lib/Win64/Release"));
 			string V8LibFile = Path.Combine(V8LibPath, "v8_monolith.lib");
 			
 			// Add the full path to the library

@@ -1,20 +1,23 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+
 #include "V8Loader.h"
+#include "V8Logger.h"
+#include "V8ModuleManager.h"
 #include "Misc/MessageDialog.h"
 #include "Modules/ModuleManager.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/Paths.h"
 
-// Disable specific warnings for V8 headers
-#pragma warning(push)
-#pragma warning(disable : 4668) // undefined macro in #if
-// Include V8 headers
+#if defined(_MSC_VER)
+  #pragma warning(push)
+  #pragma warning(disable: 4668)
+#endif
 #include "v8.h"
 #include "libplatform/libplatform.h"
-#pragma warning(pop)
-
-#include "V8Logger.h"
+#if defined(_MSC_VER)
+  #pragma warning(pop)
+#endif
 
 #define LOCTEXT_NAMESPACE "FV8LoaderModule"
 DEFINE_LOG_CATEGORY(LogJsV8)
@@ -24,7 +27,7 @@ void FV8LoaderModule::StartupModule()
 	// This code will execute after your module is loaded into memory
 	V8Platform = nullptr;
 	V8Isolate = nullptr;
-	V8ContextGlobal = nullptr;
+	V8ContextGlobal.Reset();
 	ArrayBufferAllocator = nullptr;
 	bIsInitialized = false;
 
@@ -79,10 +82,8 @@ void FV8LoaderModule::InitializeV8()
 		v8::Isolate::Scope isolate_scope(V8Isolate);
 		v8::HandleScope handle_scope(V8Isolate);
 
-		v8::Local<v8::Context> context = v8::Context::New(V8Isolate);
-
-		// Store context as Global (persistent handle)
-		V8ContextGlobal = new v8::Global<v8::Context>(V8Isolate, context);
+		v8::Local<v8::Context> ctx = v8::Context::New(V8Isolate);
+		V8ContextGlobal.Reset(V8Isolate, ctx);
 	}
 
 	bIsInitialized = true;
@@ -99,12 +100,9 @@ void FV8LoaderModule::ShutdownV8()
 	UE_LOG(LogJsV8, Log, TEXT("Shutting down V8 engine..."));
 
 	// Dispose context
-	if (V8ContextGlobal)
+	if (!V8ContextGlobal.IsEmpty())
 	{
-		v8::Global<v8::Context> *global = static_cast<v8::Global<v8::Context> *>(V8ContextGlobal);
-		global->Reset();
-		delete global;
-		V8ContextGlobal = nullptr;
+		V8ContextGlobal.Reset();
 	}
 
 	// Dispose isolate
@@ -143,7 +141,7 @@ bool FV8LoaderModule::IsV8Loaded() const
 
 FString FV8LoaderModule::ExecuteJavaScript(const FString &Script)
 {
-	if (!bIsInitialized || !V8Isolate || !V8ContextGlobal)
+	if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
 	{
 		UE_LOG(LogJsV8, Error, TEXT("V8 is not initialized. Cannot execute JavaScript."));
 		return TEXT("Error: V8 not initialized");
@@ -156,8 +154,8 @@ FString FV8LoaderModule::ExecuteJavaScript(const FString &Script)
 	v8::HandleScope handle_scope(V8Isolate);
 
 	// Get Global context
-	v8::Global<v8::Context> *global = static_cast<v8::Global<v8::Context> *>(V8ContextGlobal);
-	v8::Local<v8::Context> context = v8::Local<v8::Context>::New(V8Isolate, *global);
+	//v8::Global<v8::Context> *global = static_cast<v8::Global<v8::Context> *>(V8ContextGlobal);
+	v8::Local<v8::Context> context = V8ContextGlobal.Get(V8Isolate);
 	v8::Context::Scope context_scope(context);
 
 	// Convert FString to UTF-8
@@ -219,6 +217,57 @@ FString FV8LoaderModule::ExecuteJavaScript(const FString &Script)
 		UE_LOG(LogJsV8, Warning, TEXT("JavaScript executed but result is empty"));
 		return TEXT("");
 	}
+}
+
+void FV8LoaderModule::LoadJsModule(const std::string& ModuleName)
+{
+	if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
+	{
+		UE_LOG(LogJsV8, Error, TEXT("V8 is not initialized. Cannot load JS module."));
+		return;
+	}
+	v8::Isolate* isolate = V8Isolate;
+	v8::Isolate::Scope isolate_scope(isolate);
+	v8::HandleScope handle_scope(isolate);
+
+	v8::Local<v8::Context> ctx = V8ContextGlobal.Get(isolate);
+	v8::Context::Scope context_scope(ctx);
+
+	if (!ModuleManager)
+	{
+		ModuleManager = new FV8ModuleManager();
+		ModuleManager->Setup(V8Isolate, ctx,
+			// Resolve module ID callback
+			[](std::string_view ReferrerResolvedId,
+			   std::string_view RequestSpecifier,
+			   std::string& OutResolvedModuleId,
+			   std::string& OutError) -> bool
+			{
+				// Simple resolution logic: just return the request specifier as resolved ID
+				OutResolvedModuleId = std::string(RequestSpecifier);
+				return true;
+			},
+			// Load source by module ID callback
+			[](std::string_view ResolvedModuleId,
+			   std::string& OutSourceUtf8,
+			   std::string& OutError) -> bool
+			{
+				// Simple loading logic: for demonstration, return a hardcoded source
+				if (ResolvedModuleId == "mod:example")
+				{
+					OutSourceUtf8 = "export function hello() { return 'Hello from example module!'; }";
+					return true;
+				}
+				else
+				{
+					OutError = "Module not found: " + std::string(ResolvedModuleId);
+					return false;
+				}
+		});
+	}
+
+	UE_LOG(LogJsV8, Log, TEXT("Loading JS module: %s"), *FString(ModuleName.c_str()));
+	ModuleManager->LoadModule(ModuleName);
 }
 
 #undef LOCTEXT_NAMESPACE

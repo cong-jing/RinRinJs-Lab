@@ -18,7 +18,7 @@ void FJsRuntimeModule::StartupModule()
 	// Initialize V8 through V8Loader module
 	FV8LoaderModule& V8Loader = FModuleManager::LoadModuleChecked<FV8LoaderModule>("V8Loader");
 	V8Loader.InitializeV8();
-
+	
 	// Test JavaScript execution
 	if (V8Loader.IsV8Loaded())
 	{
@@ -87,6 +87,12 @@ void FJsRuntimeModule::ShutdownModule()
 	}
 #endif
 	UE_LOG(LogJs, Log, TEXT("JsRuntime module shutdown"));
+}
+
+void FJsRuntimeModule::LoadJsModule(const std::string& ModuleName)
+{
+	UE_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.c_str()));
+
 }
 
 #undef LOCTEXT_NAMESPACE

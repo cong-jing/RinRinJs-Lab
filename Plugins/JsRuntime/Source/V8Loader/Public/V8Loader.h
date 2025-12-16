@@ -4,16 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
+#include "V8ModuleManager.h"
+#if defined(_MSC_VER)
+  #pragma warning(push)
+  #pragma warning(disable: 4668)
+#endif
+#include "v8.h"
+#if defined(_MSC_VER)
+  #pragma warning(pop)
+#endif
 
-// Forward declarations for V8 types
-namespace v8
-{
-	class Platform;
-	class Isolate;
-	class Context;
-	template<class T> class Local;
-	template<class T> class Global;  // Use Global instead of Persistent
-}
 
 class V8LOADER_API FV8LoaderModule : public IModuleInterface
 {
@@ -34,19 +34,21 @@ public:
 	/** Execute JavaScript code and return the result as a string */
 	FString ExecuteJavaScript(const FString& Script);
 
+	void LoadJsModule(const std::string& ModuleName);
+
 private:
 	/** V8 Platform */
 	void* V8Platform;
 
 	/** V8 Isolate */
 	v8::Isolate* V8Isolate;
-
-	/** V8 Context (Global handle) */
-	void* V8ContextGlobal;
+	v8::Global<v8::Context> V8ContextGlobal;
 
 	/** Array buffer allocator */
 	void* ArrayBufferAllocator;
 
 	/** Flag to track if V8 is initialized */
 	bool bIsInitialized;
+
+	FV8ModuleManager* ModuleManager;
 };

@@ -1,11 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <functional>
+#include "JsRuntimeDefines.h"
 
 #if defined(_MSC_VER)
   #pragma warning(push)
@@ -16,27 +12,28 @@
   #pragma warning(pop)
 #endif
 
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <functional>
+#include <span>
+
 class FV8ModuleManager
 {
 public:
-    using FResolveModuleIdFn = std::function<bool(
-        std::string_view ReferrerResolvedId,
-        std::string_view RequestSpecifier,
-        std::string& OutResolvedModuleId,
-        std::string& OutError)>;
-
-    using FLoadSourceByModuleIdFn = std::function<bool(
-        std::string_view ResolvedModuleId,
-        std::string& OutSourceUtf8,
-        std::string& OutError)>;
-
-    void Setup(v8::Isolate* InIsolate,
-        v8::Local<v8::Context> InContext,
-        FResolveModuleIdFn InResolve,
-        FLoadSourceByModuleIdFn InLoadSource);
-
+	FV8ModuleManager(v8::Isolate* InIsolate, v8::Local<v8::Context> InContext);
+    ~FV8ModuleManager() { UnloadAll(); }
+    
     // 入口加载：你传入的可以是 "mod:AAA" 或 "file:..." 等“请求 specifier”
-    v8::MaybeLocal<v8::Module> LoadModule(std::string_view EntrySpecifier);
+    v8::MaybeLocal<v8::Module> LoadModule(
+        std::string_view EntrySpecifier,
+        FJsRuntime::FResolveModuleIdFn InResolve,
+        FJsRuntime::FLoadSourceByModuleIdFn InLoadSource);
+
+    void ExcuteFunction(std::string_view ModuleId,
+        std::string_view FunctionName,
+        std::span<v8::Local<v8::Value>> Args,
+		v8::Local<v8::Value>& OutResult);
 
     void UnloadAll();
 
@@ -66,8 +63,8 @@ private:
     v8::Isolate* Isolate = nullptr;
     v8::Global<v8::Context> Context;
 
-    FResolveModuleIdFn ResolveModuleId;
-    FLoadSourceByModuleIdFn LoadSourceByModuleId;
+    FJsRuntime::FResolveModuleIdFn ResolveModuleId;
+    FJsRuntime::FLoadSourceByModuleIdFn LoadSourceByModuleId;
 
     std::unordered_map<std::string, v8::Global<v8::Module>> ModuleCache;
     std::unordered_map<void*, std::string> ModuleIdByPtr;

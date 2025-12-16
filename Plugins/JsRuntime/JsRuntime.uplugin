@@ -19,16 +19,6 @@
 			"Name": "JsRuntime",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
-		},
-		{
-			"Name": "ChakraCoreLoader",
-			"Type": "Runtime",
-			"LoadingPhase": "PreDefault"
-		},
-		{
-			"Name": "V8Loader",
-			"Type": "Runtime",
-			"LoadingPhase": "PreDefault"
 		}
 	]
 }

@@ -3,11 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Modules/ModuleManager.h"
+#include "JsRuntimeDefines.h"
 #include <string>
-DECLARE_LOG_CATEGORY_EXTERN(LogJs, Log, All);
 
-class FJsRuntimeModule : public IModuleInterface
+class JSRUNTIME_API FJsRuntimeModule : public IModuleInterface
 {
 public:
 
@@ -15,5 +14,7 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 
-	void LoadJsModule(const std::string& ModuleName);
+	void LoadJsModule(const std::string_view ModuleName,
+		FJsRuntime::FResolveModuleIdFn InResolve,
+		FJsRuntime::FLoadSourceByModuleIdFn InLoadSource);
 };

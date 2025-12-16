@@ -1,9 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "JsRuntime.h"
+#include "JsRuntimeLogger.h"
 #include "Modules/ModuleManager.h"
 #if JS_RUNTIME_V8
-#include "V8Loader.h"
+#include "V8/V8Loader.h"
 #else
 #include "ChakraCoreLoader.h"
 #endif
@@ -16,9 +17,9 @@ void FJsRuntimeModule::StartupModule()
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 #if JS_RUNTIME_V8
 	// Initialize V8 through V8Loader module
-	FV8LoaderModule& V8Loader = FModuleManager::LoadModuleChecked<FV8LoaderModule>("V8Loader");
+	FV8Loader& V8Loader = FV8Loader::Get();
 	V8Loader.InitializeV8();
-	
+
 	// Test JavaScript execution
 	if (V8Loader.IsV8Loaded())
 	{
@@ -73,11 +74,8 @@ void FJsRuntimeModule::ShutdownModule()
 
 #if JS_RUNTIME_V8
 	// Shutdown V8 through V8Loader module
-	if (FModuleManager::Get().IsModuleLoaded("V8Loader"))
-	{
-		FV8LoaderModule& V8Loader = FModuleManager::GetModuleChecked<FV8LoaderModule>("V8Loader");
-		V8Loader.ShutdownV8();
-	}
+	FV8Loader& V8Loader = FV8Loader::Get();
+	V8Loader.ShutdownV8();
 #else
 	// Shutdown ChakraCore through ChakraCoreLoader module
 	if (FModuleManager::Get().IsModuleLoaded("ChakraCoreLoader"))
@@ -89,12 +87,15 @@ void FJsRuntimeModule::ShutdownModule()
 	UE_LOG(LogJs, Log, TEXT("JsRuntime module shutdown"));
 }
 
-void FJsRuntimeModule::LoadJsModule(const std::string& ModuleName)
+void FJsRuntimeModule::LoadJsModule(const std::string_view ModuleName,
+	FJsRuntime::FResolveModuleIdFn InResolve, 
+	FJsRuntime::FLoadSourceByModuleIdFn InLoadSource)
 {
-	UE_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.c_str()));
-
+	UE_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.data()));
+	FV8Loader& V8Loader = FV8Loader::Get();
+	V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
 }
 
 #undef LOCTEXT_NAMESPACE
-	
+
 IMPLEMENT_MODULE(FJsRuntimeModule, JsRuntime)

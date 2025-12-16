@@ -18,6 +18,35 @@ void URinRinGameInstance::Init()
 	{
 		FJsRuntimeModule& JsRuntimeModule = FModuleManager::GetModuleChecked<FJsRuntimeModule>("JsRuntime");
 		JsRuntimeModule.StartupModule();
+
+		JsRuntimeModule.LoadJsModule("main", // Resolve module ID callback
+			[](std::string_view ReferrerResolvedId,
+				std::string_view RequestSpecifier,
+				std::string& OutResolvedModuleId,
+				std::string& OutError) -> bool
+		{
+			// Simple resolution logic: just return the request specifier as resolved ID
+			OutResolvedModuleId = std::string(RequestSpecifier);
+			return true;
+		},
+			// Load source by module ID callback
+			[](std::string_view ResolvedModuleId,
+				std::string& OutSourceUtf8,
+				std::string& OutError) -> bool
+		{
+			// Simple loading logic: for demonstration, return a hardcoded source
+			UE_LOG(LogTemp, Log, TEXT("Loading JS Module: %s"), *FString(ResolvedModuleId.data()));
+			if (ResolvedModuleId == "main")
+			{
+				OutSourceUtf8 = "export function hello() { return 'Hello from example module!'; }";
+				return true;
+			}
+			else
+			{
+				OutError = "Module not found: " + std::string(ResolvedModuleId);
+				return false;
+			}
+		});
 		UE_LOG(LogTemp, Log, TEXT("JsRuntime StartupModule called from GameInstance"));
 	}
 	else

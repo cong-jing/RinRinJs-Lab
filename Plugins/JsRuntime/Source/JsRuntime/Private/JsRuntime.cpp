@@ -5,11 +5,11 @@
 #include "Modules/ModuleManager.h"
 #if JS_RUNTIME_V8
 #include "V8/V8Loader.h"
+using rinrin::jsruntime::FV8Loader;
 #else
 #include "ChakraCoreLoader.h"
 #endif
 
-#define LOCTEXT_NAMESPACE "FJsRuntimeModule"
 DEFINE_LOG_CATEGORY(LogJs)
 
 void FJsRuntimeModule::ShutdownModule()
@@ -104,14 +104,12 @@ void FJsRuntimeModule::StopRuntime()
 }
 
 void FJsRuntimeModule::LoadJsModule(const std::string_view ModuleName,
-	FJsRuntime::FResolveModuleIdFn InResolve, 
-	FJsRuntime::FLoadSourceByModuleIdFn InLoadSource)
+	rinrin::jsruntime::FResolveModuleIdFn InResolve, 
+	rinrin::jsruntime::FLoadSourceByModuleIdFn InLoadSource)
 {
 	UE_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.data()));
 	FV8Loader& V8Loader = FV8Loader::Get();
 	V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
 }
-
-#undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FJsRuntimeModule, JsRuntime)

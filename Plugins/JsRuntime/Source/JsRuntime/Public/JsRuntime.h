@@ -17,6 +17,6 @@ public:
 	void StopRuntime();
 
 	void LoadJsModule(const std::string_view ModuleName,
-		FJsRuntime::FResolveModuleIdFn InResolve,
-		FJsRuntime::FLoadSourceByModuleIdFn InLoadSource);
+		rinrin::jsruntime::FResolveModuleIdFn InResolve,
+		rinrin::jsruntime::FLoadSourceByModuleIdFn InLoadSource);
 };

@@ -19,7 +19,7 @@
 #pragma warning(pop)
 #endif
 
-#define LOCTEXT_NAMESPACE "FV8Loader"
+namespace rinrin::jsruntime {
 
 FV8Loader::FV8Loader() = default;
 FV8Loader::~FV8Loader() = default;
@@ -76,7 +76,7 @@ void FV8Loader::CreateExecutionContext()
 	if (!V8Isolate)
 	{
 		UE_LOG(LogJs, Error, TEXT("Failed to create V8 Isolate"));
-		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("IsolateCreationError", "Failed to create V8 Isolate"));
+		FMessageDialog::Open(EAppMsgType::Ok, NSLOCTEXT("FV8Loader", "IsolateCreationError", "Failed to create V8 Isolate"));
 		return;
 	}
 
@@ -174,7 +174,7 @@ std::string FV8Loader::ExecuteJavaScript(std::string_view ScriptUtf8)
 	}
 }
 
-void FV8Loader::LoadJsModule(const std::string_view ModuleName, FJsRuntime::FResolveModuleIdFn InResolve, FJsRuntime::FLoadSourceByModuleIdFn InLoadSource)
+void FV8Loader::LoadJsModule(const std::string_view ModuleName, FResolveModuleIdFn InResolve, FLoadSourceByModuleIdFn InLoadSource)
 {
 	if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
 	{
@@ -237,5 +237,5 @@ void FV8Loader::LoadJsModule(const std::string_view ModuleName, FJsRuntime::FRes
 	}
 }
 
-#undef LOCTEXT_NAMESPACE
+} // namespace rinrin::jsruntime
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <functional>
 
-namespace FJsRuntime
+namespace rinrin::jsruntime
 {
     using FResolveModuleIdFn = std::function<bool(
         std::string_view ReferrerResolvedId,
@@ -16,4 +16,4 @@ namespace FJsRuntime
         std::string_view ResolvedModuleId,
         std::string& OutSourceUtf8,
         std::string& OutError)>;
-};
+}

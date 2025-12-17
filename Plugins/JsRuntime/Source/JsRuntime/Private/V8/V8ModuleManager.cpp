@@ -12,13 +12,14 @@
   #pragma warning(pop)
 #endif
 
+namespace rinrin::jsruntime {
+
 FV8ModuleManager::FV8ModuleManager(
     v8::Isolate* InIsolate,
     v8::Local<v8::Context> InContext)
     : Isolate(InIsolate)
 {
     Context.Reset(Isolate, InContext);
-    // 让 resolver 静态函数能找回 this
     if (InContext->GetNumberOfEmbedderDataFields() > kEmbedderSlot)
     {
         InContext->SetAlignedPointerInEmbedderData(kEmbedderSlot, this);
@@ -33,8 +34,8 @@ FV8ModuleManager::FV8ModuleManager(
 
 v8::MaybeLocal<v8::Module> FV8ModuleManager::LoadModule(
     std::string_view EntrySpecifier,
-    FJsRuntime::FResolveModuleIdFn InResolve,
-    FJsRuntime::FLoadSourceByModuleIdFn InLoadSource)
+    FResolveModuleIdFn InResolve,
+    FLoadSourceByModuleIdFn InLoadSource)
 {
     UE_LOG(LogJs, Verbose, TEXT("LoadModule: entry='%s'"), *FString(EntrySpecifier.data()));
 
@@ -145,7 +146,6 @@ bool FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
         return false;
     }
 
-    // 1) 先 Resolve（无 IO）
     std::string resolvedId;
     std::string err;
     if (!ResolveModuleId(ReferrerResolvedId, RequestSpecifier, resolvedId, err))
@@ -156,7 +156,6 @@ bool FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
 
     UE_LOG(LogJs, Verbose, TEXT("GetOrCompileModule: resolved '%s' -> '%s'"), *FString(RequestSpecifier.data()), *FString(resolvedId.c_str()));
 
-    // 2) cache 命中：无 IO 直接返回
     if (auto it = ModuleCache.find(resolvedId); it != ModuleCache.end())
     {
         UE_LOG(LogJs, Verbose, TEXT("GetOrCompileModule: cache hit '%s'"), *FString(resolvedId.c_str()));
@@ -164,7 +163,6 @@ bool FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
         return true;
     }
 
-    // 3) miss：再 LoadSource（有 IO）
     std::string sourceUtf8;
     if (!LoadSourceByModuleId(resolvedId, sourceUtf8, err))
     {
@@ -175,7 +173,6 @@ bool FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
 
     UE_LOG(LogJs, Verbose, TEXT("GetOrCompileModule: compiling '%s' (source length=%d)"), *FString(resolvedId.c_str()), (int)sourceUtf8.size());
 
-    // 4) Compile
     v8::Local<v8::Context> ctx = Context.Get(Isolate);
     v8::Context::Scope cs(ctx);
 
@@ -201,7 +198,6 @@ bool FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
 
     v8::ScriptCompiler::Source sc(sourceStr, origin);
 
-    // Catch JS syntax/compile errors via TryCatch (V8 uses MaybeLocal, not C++ exceptions)
     v8::TryCatch try_catch(Isolate);
 
     v8::Local<v8::Module> mod;
@@ -210,38 +206,9 @@ bool FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
         if (try_catch.HasCaught())
         {
             V8Util::LogTryCatch(Isolate, try_catch, TEXT("GetOrCompileModule/Compile"));
-
-            /*v8::Local<v8::Message> message = try_catch.Message();
-            if (!message.IsEmpty())
-            {
-                v8::Local<v8::String> msgStr;
-                if (message->Get().ToLocal(&msgStr))
-                {
-                    v8::String::Utf8Value msgUtf8(Isolate, msgStr);
-                    UE_LOG(LogJs, Error, TEXT("Compile error: %s"), UTF8_TO_TCHAR(*msgUtf8));
-                }
-
-                v8::Local<v8::Value> resName = message->GetScriptResourceName();
-                if (!resName.IsEmpty())
-                {
-                    v8::String::Utf8Value nameUtf8(Isolate, resName);
-                    int line = message->GetLineNumber(ctx).FromMaybe(0);
-                    int start = message->GetStartColumn(ctx).FromMaybe(0);
-                    int end = message->GetEndColumn(ctx).FromMaybe(0);
-                    UE_LOG(LogJs, Error, TEXT("at %s:%d:%d-%d"), UTF8_TO_TCHAR(*nameUtf8), line, start, end);
-
-                    v8::Local<v8::String> srcLine;
-                    if (message->GetSourceLine(ctx).ToLocal(&srcLine))
-                    {
-                        v8::String::Utf8Value lineUtf8(Isolate, srcLine);
-                        UE_LOG(LogJs, Error, TEXT("Source: %s"), UTF8_TO_TCHAR(*lineUtf8));
-                    }
-                }
-            }*/
         }
         return false;
     }
-    // 5) 立刻 cache（循环依赖需要）
     ModuleCache.emplace(resolvedId, v8::Global<v8::Module>(Isolate, mod));
     RememberResolvedId(mod, resolvedId);
 
@@ -321,7 +288,6 @@ void FV8ModuleManager::ExcuteFunction(std::string_view ModuleId,
 
     UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: module status=%d"), (int)foundedModule->GetStatus());
 
-    // Ensure the module is evaluated (runs top-level code)
     if (foundedModule->GetStatus() < v8::Module::kEvaluated)
     {
         UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: evaluating module"));
@@ -335,11 +301,9 @@ void FV8ModuleManager::ExcuteFunction(std::string_view ModuleId,
             UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Evaluate failed for module '%s'."), *FString(ModuleId.data()));
             return;
         }
-        // For modules without top-level await, one checkpoint is usually enough
         isolate->PerformMicrotaskCheckpoint();
     }
 
-    // Get namespace object containing the exports
     UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: retrieving module namespace"));
     v8::Local<v8::Value> moduleNsVal = foundedModule->GetModuleNamespace();
     if (moduleNsVal.IsEmpty() || !moduleNsVal->IsObject())
@@ -349,7 +313,6 @@ void FV8ModuleManager::ExcuteFunction(std::string_view ModuleId,
     }
     v8::Local<v8::Object> moduleNameSpace = moduleNsVal.As<v8::Object>();
 
-    // Lookup the requested export
     v8::Local<v8::String> funKey;
     if (!v8::String::NewFromUtf8(isolate, std::string(FunctionName).c_str(), v8::NewStringType::kNormal).ToLocal(&funKey))
     {
@@ -366,10 +329,6 @@ void FV8ModuleManager::ExcuteFunction(std::string_view ModuleId,
     }
     v8::Local<v8::Function> targetFn = funVal.As<v8::Function>();
 
-    // Prepare arguments
-    //int argc = static_cast<int>(Args.size());
-    // Call function
-    //UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: calling function argc=%d"), argc);
     v8::Local<v8::Value> ret;
     if (!targetFn->Call(ctx, v8::Undefined(isolate), Args.size(), Args.data()).ToLocal(&ret))
     {
@@ -383,3 +342,5 @@ void FV8ModuleManager::ExcuteFunction(std::string_view ModuleId,
 
     OutResult = ret;
 }
+
+} // namespace rinrin::jsruntime

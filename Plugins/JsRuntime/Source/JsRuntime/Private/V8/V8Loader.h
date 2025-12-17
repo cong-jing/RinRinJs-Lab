@@ -19,6 +19,8 @@
 #include <string_view>
 #include <string>
 
+namespace rinrin::jsruntime {
+
 class FV8ModuleManager;
 
 class FV8Loader
@@ -26,7 +28,7 @@ class FV8Loader
 public:
 	static FV8Loader& Get()
 	{
-		static FV8Loader instance; // C++11 起线程安全初始化
+		static FV8Loader instance; // C++11 ????????????
 		return instance;
 	}
 
@@ -49,8 +51,8 @@ public:
 	std::string ExecuteJavaScript(std::string_view ScriptUtf8);
 
 	void LoadJsModule(const std::string_view ModuleName,
-		FJsRuntime::FResolveModuleIdFn InResolve,
-		FJsRuntime::FLoadSourceByModuleIdFn InLoadSource);
+		FResolveModuleIdFn InResolve,
+		FLoadSourceByModuleIdFn InLoadSource);
 
 private:
 	FV8Loader();
@@ -82,3 +84,5 @@ private:
 	/** Flag to track if V8 is initialized */
 	bool bIsInitialized;
 };
+
+} // namespace rinrin::jsruntime

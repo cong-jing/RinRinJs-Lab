@@ -12,6 +12,7 @@
 #pragma warning(pop)
 #endif
 
+namespace rinrin::jsruntime {
 
 FString  V8Util::V8ToFString(v8::Isolate* Isolate, v8::Local<v8::Value> Value)
 {
@@ -85,3 +86,5 @@ void V8Util::LogTryCatch(v8::Isolate* Isolate, v8::TryCatch& TryCatch, const TCH
 		UE_LOG(LogJs, Error, TEXT("%s: <no stack trace>"), Prefix);
 	}
 }
+
+} // namespace rinrin::jsruntime

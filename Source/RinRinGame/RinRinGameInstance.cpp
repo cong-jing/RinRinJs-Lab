@@ -18,7 +18,7 @@ void URinRinGameInstance::Init()
 	{
 		FJsRuntimeModule& JsRuntimeModule = FModuleManager::GetModuleChecked<FJsRuntimeModule>("JsRuntime");
 
-		JsRuntimeModule.InitialzeRuntime();
+		JsRuntimeModule.StartRuntime();
 		JsRuntimeModule.LoadJsModule("main", // Resolve module ID callback
 			[](std::string_view ReferrerResolvedId,
 				std::string_view RequestSpecifier,
@@ -26,6 +26,7 @@ void URinRinGameInstance::Init()
 				std::string& OutError) -> bool
 		{
 			// Simple resolution logic: just return the request specifier as resolved ID
+			UE_LOG(LogTemp, Log, TEXT("Resolving module: %s (referrer: %s)"), *FString(RequestSpecifier.data()), *FString(ReferrerResolvedId.data()));
 			OutResolvedModuleId = std::string(RequestSpecifier);
 			return true;
 		},
@@ -35,10 +36,19 @@ void URinRinGameInstance::Init()
 				std::string& OutError) -> bool
 		{
 			// Simple loading logic: for demonstration, return a hardcoded source
-			UE_LOG(LogTemp, Log, TEXT("Loading JS Module: %s"), *FString(ResolvedModuleId.data()));
+			UE_LOG(LogTemp, Log, TEXT("Loading script file: %s"), *FString(ResolvedModuleId.data()));
 			if (ResolvedModuleId == "main")
 			{
-				OutSourceUtf8 = "export function hello() { return 'Hello from example module!'; }";
+				OutSourceUtf8 = 
+					"import {add} from './a.js';\n"
+					"export add;\n"
+					"export function hello() { return 'Hello from example module!'; }";
+				return true;
+			}
+			else if (ResolvedModuleId == "./a.js")
+			{
+				OutSourceUtf8 = 
+					"export function add(x, y) { return x + y; }";
 				return true;
 			}
 			else

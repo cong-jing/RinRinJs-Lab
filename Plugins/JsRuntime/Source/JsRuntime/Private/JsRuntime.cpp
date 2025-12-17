@@ -12,29 +12,44 @@
 #define LOCTEXT_NAMESPACE "FJsRuntimeModule"
 DEFINE_LOG_CATEGORY(LogJs)
 
-void FJsRuntimeModule::InitialzeRuntime()
+void FJsRuntimeModule::ShutdownModule()
 {
-	UE_LOG(LogJs, Log, TEXT("Intializing JsRuntime..."));
+	StopRuntime();
+#if JS_RUNTIME_V8
+	FV8Loader& V8Loader = FV8Loader::Get();
+	V8Loader.FinalizeV8Process();
+#else
+#endif
+}
+
+void FJsRuntimeModule::StartRuntime()
+{
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 #if JS_RUNTIME_V8
 	// Initialize V8 through V8Loader module
 	FV8Loader& V8Loader = FV8Loader::Get();
-	V8Loader.InitializeV8();
+	V8Loader.CreateExecutionContext();
 
 	// Test JavaScript execution
-	if (V8Loader.IsV8Loaded())
+	if (V8Loader.IsContextCreated())
 	{
 		UE_LOG(LogJs, Log, TEXT("Using V8 JavaScript Engine"));
 
 		// Execute the hello world script
 		FString TestScript = TEXT("'Hello from V8, ' + (1 + 2)");
-		FString Result = V8Loader.ExecuteJavaScript(TestScript);
-		UE_LOG(LogJs, Log, TEXT("JavaScript Test Result: %s"), *Result);
+		{
+			FTCHARToUTF8 Conv(*TestScript);
+			std::string Result = V8Loader.ExecuteJavaScript(std::string_view(Conv.Get(), Conv.Length()));
+			UE_LOG(LogJs, Log, TEXT("JavaScript Test Result: %s"), UTF8_TO_TCHAR(Result.c_str()));
+		}
 
 		// Execute another test script
 		FString MathScript = TEXT("(() => { return 2 + 2; })()");
-		FString MathResult = V8Loader.ExecuteJavaScript(MathScript);
-		UE_LOG(LogJs, Log, TEXT("JavaScript Math Test Result: %s"), *MathResult);
+		{
+			FTCHARToUTF8 Conv(*MathScript);
+			std::string MathResult = V8Loader.ExecuteJavaScript(std::string_view(Conv.Get(), Conv.Length()));
+			UE_LOG(LogJs, Log, TEXT("JavaScript Math Test Result: %s"), UTF8_TO_TCHAR(MathResult.c_str()));
+		}
 	}
 	else
 	{
@@ -70,14 +85,13 @@ void FJsRuntimeModule::InitialzeRuntime()
 
 void FJsRuntimeModule::StopRuntime()
 {
-	UE_LOG(LogJs, Log, TEXT("Stopping JsRuntime..."));
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
 
 #if JS_RUNTIME_V8
 	// Shutdown V8 through V8Loader module
 	FV8Loader& V8Loader = FV8Loader::Get();
-	V8Loader.ShutdownV8();
+	V8Loader.DestroyExecutionContext();
 #else
 	// Shutdown ChakraCore through ChakraCoreLoader module
 	if (FModuleManager::Get().IsModuleLoaded("ChakraCoreLoader"))
@@ -86,20 +100,16 @@ void FJsRuntimeModule::StopRuntime()
 		ChakraCoreLoader.ShutdownChakraCore();
 	}
 #endif
-	UE_LOG(LogJs, Log, TEXT("JsRuntime stopped"));
+	UE_LOG(LogJs, Log, TEXT("JsRuntime module shutdown"));
 }
 
 void FJsRuntimeModule::LoadJsModule(const std::string_view ModuleName,
 	FJsRuntime::FResolveModuleIdFn InResolve, 
 	FJsRuntime::FLoadSourceByModuleIdFn InLoadSource)
 {
+	UE_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.data()));
 	FV8Loader& V8Loader = FV8Loader::Get();
 	V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
-}
-
-void FJsRuntimeModule::ShutdownModule()
-{
-	StopRuntime();
 }
 
 #undef LOCTEXT_NAMESPACE

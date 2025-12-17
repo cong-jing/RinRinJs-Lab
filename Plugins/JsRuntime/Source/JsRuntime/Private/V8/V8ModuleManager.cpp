@@ -87,7 +87,7 @@ v8::MaybeLocal<v8::Module> FV8ModuleManager::LoadModule(
         }
     }
 
-    UE_LOG(LogJs, Verbose, TEXT("LoadModule: done"));
+    UE_LOG(LogJs, Verbose, TEXT("LoadModule complete. entry='%s'"), *FString(EntrySpecifier.data()));
     return root;
 }
 
@@ -128,7 +128,9 @@ v8::MaybeLocal<v8::Module> FV8ModuleManager::ResolveModuleCallback(
 
     v8::Local<v8::Module> out;
     if (!mgr->GetOrCompileModule(referrerId, request, out))
+    {
         return v8::MaybeLocal<v8::Module>();
+    }
 
     return out;
 }
@@ -166,6 +168,7 @@ bool FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
     std::string sourceUtf8;
     if (!LoadSourceByModuleId(resolvedId, sourceUtf8, err))
     {
+		UE_LOG(LogJs, Error, TEXT("GetOrCompileModule: LoadSourceByModuleId failed for '%s': %s"), *FString(resolvedId.c_str()), *FString(err.c_str()));
         ThrowJsError(err.empty() ? "LoadSourceByModuleId failed." : err.c_str());
         return false;
     }
@@ -177,9 +180,9 @@ bool FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
     v8::Context::Scope cs(ctx);
 
     v8::Local<v8::String> sourceStr;
-    if (!v8::String::NewFromUtf8(Isolate, sourceUtf8.c_str(),
-        v8::NewStringType::kNormal).ToLocal(&sourceStr))
+    if (!v8::String::NewFromUtf8(Isolate, sourceUtf8.c_str(), v8::NewStringType::kNormal).ToLocal(&sourceStr))
     {
+		UE_LOG(LogJs, Error, TEXT("GetOrCompileModule: Create source string failed for '%s'"), *FString(resolvedId.c_str()));
         ThrowJsError("Create source string failed.");
         return false;
     }
@@ -188,6 +191,7 @@ bool FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
     if (!v8::String::NewFromUtf8(Isolate, resolvedId.c_str(),
         v8::NewStringType::kNormal).ToLocal(&resourceName))
     {
+		UE_LOG(LogJs, Error, TEXT("GetOrCompileModule: Create resourceName failed for '%s'"), *FString(resolvedId.c_str()));
         ThrowJsError("Create resourceName failed.");
         return false;
     }
@@ -197,10 +201,46 @@ bool FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
 
     v8::ScriptCompiler::Source sc(sourceStr, origin);
 
-    v8::Local<v8::Module> mod;
-    if (!v8::ScriptCompiler::CompileModule(Isolate, &sc).ToLocal(&mod))
-        return false;
+    // Catch JS syntax/compile errors via TryCatch (V8 uses MaybeLocal, not C++ exceptions)
+    v8::TryCatch try_catch(Isolate);
 
+    v8::Local<v8::Module> mod;
+    if (!v8::ScriptCompiler::CompileModule(Isolate, &sc).ToLocal(&mod)) {
+		UE_LOG(LogJs, Error, TEXT("GetOrCompileModule: CompileModule failed for '%s'"), *FString(resolvedId.c_str()));
+        if (try_catch.HasCaught())
+        {
+            V8Util::LogTryCatch(Isolate, try_catch, TEXT("GetOrCompileModule/Compile"));
+
+            /*v8::Local<v8::Message> message = try_catch.Message();
+            if (!message.IsEmpty())
+            {
+                v8::Local<v8::String> msgStr;
+                if (message->Get().ToLocal(&msgStr))
+                {
+                    v8::String::Utf8Value msgUtf8(Isolate, msgStr);
+                    UE_LOG(LogJs, Error, TEXT("Compile error: %s"), UTF8_TO_TCHAR(*msgUtf8));
+                }
+
+                v8::Local<v8::Value> resName = message->GetScriptResourceName();
+                if (!resName.IsEmpty())
+                {
+                    v8::String::Utf8Value nameUtf8(Isolate, resName);
+                    int line = message->GetLineNumber(ctx).FromMaybe(0);
+                    int start = message->GetStartColumn(ctx).FromMaybe(0);
+                    int end = message->GetEndColumn(ctx).FromMaybe(0);
+                    UE_LOG(LogJs, Error, TEXT("at %s:%d:%d-%d"), UTF8_TO_TCHAR(*nameUtf8), line, start, end);
+
+                    v8::Local<v8::String> srcLine;
+                    if (message->GetSourceLine(ctx).ToLocal(&srcLine))
+                    {
+                        v8::String::Utf8Value lineUtf8(Isolate, srcLine);
+                        UE_LOG(LogJs, Error, TEXT("Source: %s"), UTF8_TO_TCHAR(*lineUtf8));
+                    }
+                }
+            }*/
+        }
+        return false;
+    }
     // 5) 立刻 cache（循环依赖需要）
     ModuleCache.emplace(resolvedId, v8::Global<v8::Module>(Isolate, mod));
     RememberResolvedId(mod, resolvedId);
@@ -263,7 +303,7 @@ void FV8ModuleManager::ExcuteFunction(std::string_view ModuleId,
     v8::Local<v8::Context> ctx = Context.Get(isolate);
     v8::Context::Scope context_scope(ctx);
 
-    v8::TryCatch TryCatch(isolate);
+    v8::TryCatch try_catch(isolate);
 
     auto it = ModuleCache.find(std::string(ModuleId));
     if (it == ModuleCache.end())
@@ -288,9 +328,9 @@ void FV8ModuleManager::ExcuteFunction(std::string_view ModuleId,
         v8::MaybeLocal<v8::Value> EvalResult = foundedModule->Evaluate(ctx);
         if (EvalResult.IsEmpty())
         {
-            if (TryCatch.HasCaught())
+            if (try_catch.HasCaught())
             {
-                V8Util::LogTryCatch(isolate, TryCatch, TEXT("ExcuteFunction/Evaluate"));
+                V8Util::LogTryCatch(isolate, try_catch, TEXT("ExcuteFunction/Evaluate"));
             }
             UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Evaluate failed for module '%s'."), *FString(ModuleId.data()));
             return;
@@ -324,25 +364,18 @@ void FV8ModuleManager::ExcuteFunction(std::string_view ModuleId,
         UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Export '%s' not found or not a function in module '%s'."), *FString(FunctionName.data()), *FString(ModuleId.data()));
         return;
     }
-    v8::Local<v8::Function> TargetFn = funVal.As<v8::Function>();
+    v8::Local<v8::Function> targetFn = funVal.As<v8::Function>();
 
     // Prepare arguments
-    int argc = static_cast<int>(Args.size());
-    /*std::vector<v8::Local<v8::Value>> argvStorage;
-    if (argc > 0)
-    {
-        argvStorage.assign(Args.begin(), Args.end());
-    }
-    v8::Local<v8::Value>* argv = argc > 0 ? argvStorage.data() : nullptr;*/
-
+    //int argc = static_cast<int>(Args.size());
     // Call function
-    UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: calling function argc=%d"), argc);
+    //UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: calling function argc=%d"), argc);
     v8::Local<v8::Value> ret;
-    if (!TargetFn->Call(ctx, v8::Undefined(isolate), argc, Args.data()).ToLocal(&ret))
+    if (!targetFn->Call(ctx, v8::Undefined(isolate), Args.size(), Args.data()).ToLocal(&ret))
     {
-        if (TryCatch.HasCaught())
+        if (try_catch.HasCaught())
         {
-            V8Util::LogTryCatch(isolate, TryCatch, TEXT("ExcuteFunction/Call"));
+            V8Util::LogTryCatch(isolate, try_catch, TEXT("ExcuteFunction/Call"));
         }
         UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Call failed for '%s' in module '%s'."), *FString(FunctionName.data()), *FString(ModuleId.data()));
         return;

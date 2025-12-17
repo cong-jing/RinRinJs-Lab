@@ -16,6 +16,8 @@
 
 #include "CoreMinimal.h"
 #include <memory>
+#include <string_view>
+#include <string>
 
 class FV8ModuleManager;
 
@@ -32,18 +34,19 @@ public:
 	FV8Loader& operator=(const FV8Loader&) = delete;
 
 	void EnsureV8ProcessInitialized();
+	void FinalizeV8Process();
 
 	/** Initialize V8 engine */
-	void InitializeV8();
+	void CreateExecutionContext();
 	
 	/** Shutdown V8 engine */
-	void ShutdownV8();
+	void DestroyExecutionContext();
 	
 	/** Check if V8 is loaded and initialized */
-	bool IsV8Loaded() const;
+	bool IsContextCreated() const;
 
-	/** Execute JavaScript code and return the result as a string */
-	FString ExecuteJavaScript(const FString& Script);
+	/** Execute JavaScript code and return the result as a UTF-8 string */
+	std::string ExecuteJavaScript(std::string_view ScriptUtf8);
 
 	void LoadJsModule(const std::string_view ModuleName,
 		FJsRuntime::FResolveModuleIdFn InResolve,

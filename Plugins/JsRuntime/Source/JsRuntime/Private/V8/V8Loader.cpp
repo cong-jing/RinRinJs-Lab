@@ -24,10 +24,11 @@
 FV8Loader::FV8Loader() = default;
 FV8Loader::~FV8Loader() = default;
 
+static bool bProcessInitialized = false;
+
 void FV8Loader::EnsureV8ProcessInitialized()
 {
 	// V8 requires process-wide initialization only once.
-	static bool bProcessInitialized = false;
 	if (bProcessInitialized) return;
 
 	v8::V8::InitializeICUDefaultLocation(nullptr);
@@ -40,7 +41,15 @@ void FV8Loader::EnsureV8ProcessInitialized()
 	bProcessInitialized = true;
 }
 
-void FV8Loader::InitializeV8()
+void FV8Loader::FinalizeV8Process()
+{
+	v8::V8::Dispose();
+	v8::V8::DisposePlatform();
+	V8Platform.reset();
+	bProcessInitialized = false;
+}
+
+void FV8Loader::CreateExecutionContext()
 {
 	if (bIsInitialized)
 	{
@@ -84,81 +93,44 @@ void FV8Loader::InitializeV8()
 	UE_LOG(LogJs, Log, TEXT("V8 engine initialized successfully"));
 }
 
-void FV8Loader::ShutdownV8()
+void FV8Loader::DestroyExecutionContext()
 {
-
-	UE_LOG(LogJs, Log, TEXT("Shutting down V8 engine..."));
-	if (!bIsInitialized)
-	{
-
-		UE_LOG(LogJs, Log, TEXT("V8 engine not initialzed. Return."));
-		return;
-	}
-
-	if (JsModuleManager)
-	{
-		JsModuleManager.reset();
-	}
-
-
-	// Dispose context
-	if (!V8ContextGlobal.IsEmpty())
-	{
-		V8ContextGlobal.Reset();
-	}
-
-	// Dispose isolate
-	if (V8Isolate)
-	{
-		V8Isolate.reset();
-		UE_LOG(LogJs, Log, TEXT("V8 Isolate disposed"));
-	}
-
-	// Delete array buffer allocator
+	JsModuleManager.reset();
+	V8ContextGlobal.Reset();
 	ArrayBufferAllocator.reset();
-
+	V8Isolate.reset();
 	bIsInitialized = false;
-	UE_LOG(LogJs, Log, TEXT("V8 engine shut down successfully"));
 }
 
-bool FV8Loader::IsV8Loaded() const
+bool FV8Loader::IsContextCreated() const
 {
 	return bIsInitialized && (V8Isolate.get() != nullptr);
 }
 
-FString FV8Loader::ExecuteJavaScript(const FString& Script)
+std::string FV8Loader::ExecuteJavaScript(std::string_view ScriptUtf8)
 {
-	UE_LOG(LogJs, Log, TEXT("ExecuteJavaScript"));
 	if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
 	{
 		UE_LOG(LogJs, Error, TEXT("V8 is not initialized. Cannot execute JavaScript."));
-		return TEXT("Error: V8 not initialized");
+		return std::string("Error: V8 not initialized");
 	}
 
-	UE_LOG(LogJs, Verbose, TEXT("Executing JavaScript: %s"), *Script);
+	UE_LOG(LogJs, Verbose, TEXT("Executing JavaScript (len=%d)"), (int)ScriptUtf8.size());
 
 	// Enter isolate scope
 	v8::Isolate::Scope isolate_scope(V8Isolate.get());
 	v8::HandleScope handle_scope(V8Isolate.get());
 
 	// Get Global context
-	//v8::Global<v8::Context> *global = static_cast<v8::Global<v8::Context> *>(V8ContextGlobal);
 	v8::Local<v8::Context> context = V8ContextGlobal.Get(V8Isolate.get());
 	v8::Context::Scope context_scope(context);
 
-	// Convert FString to UTF-8
-	FTCHARToUTF8 Converter(*Script);
-	const char* ScriptUTF8 = Converter.Get();
-
-	// Create source string
-	v8::MaybeLocal<v8::String> maybe_source =
-		v8::String::NewFromUtf8(V8Isolate.get(), ScriptUTF8, v8::NewStringType::kNormal);
-
+	// Create source string directly from UTF-8 view
 	v8::Local<v8::String> source;
-	if (!maybe_source.ToLocal(&source))
+	if (!v8::String::NewFromUtf8(V8Isolate.get(), ScriptUtf8.data(), v8::NewStringType::kNormal, (int)ScriptUtf8.size()).ToLocal(&source))
 	{
 		UE_LOG(LogJs, Error, TEXT("Failed to create V8 source string"));
-		return TEXT("Error: Failed to create source string");
+		return std::string("Error: Failed to create source string");
 	}
 
 	// Compile script
@@ -171,10 +143,8 @@ FString FV8Loader::ExecuteJavaScript(const FString& Script)
 		// Get exception message
 		v8::Local<v8::Value> exception = try_catch.Exception();
 		v8::String::Utf8Value exception_str(V8Isolate.get(), exception);
-		FString ErrorMsg = UTF8_TO_TCHAR(*exception_str);
-
-		UE_LOG(LogJs, Error, TEXT("Failed to compile script: %s"), *ErrorMsg);
-		return FString::Printf(TEXT("Error: Compilation failed - %s"), *ErrorMsg);
+		UE_LOG(LogJs, Error, TEXT("Failed to compile script: %s"), UTF8_TO_TCHAR(*exception_str));
+		return std::string("Error: Compilation failed - ") + (*exception_str ? *exception_str : "");
 	}
 
 	// Run script
@@ -186,30 +156,26 @@ FString FV8Loader::ExecuteJavaScript(const FString& Script)
 		// Get exception message
 		v8::Local<v8::Value> exception = try_catch.Exception();
 		v8::String::Utf8Value exception_str(V8Isolate.get(), exception);
-		FString ErrorMsg = UTF8_TO_TCHAR(*exception_str);
-
-		UE_LOG(LogJs, Error, TEXT("Failed to execute script: %s"), *ErrorMsg);
-		return FString::Printf(TEXT("Error: Execution failed - %s"), *ErrorMsg);
+		UE_LOG(LogJs, Error, TEXT("Failed to execute script: %s"), UTF8_TO_TCHAR(*exception_str));
+		return std::string("Error: Execution failed - ") + (*exception_str ? *exception_str : "");
 	}
 
-	// Convert result to string
+	// Convert result to string (UTF-8)
 	v8::String::Utf8Value utf8(V8Isolate.get(), result);
 	if (*utf8)
 	{
-		FString ResultString = UTF8_TO_TCHAR(*utf8);
-		UE_LOG(LogJs, Log, TEXT("JavaScript executed successfully. Result: %s"), *ResultString);
-		return ResultString;
+		UE_LOG(LogJs, Log, TEXT("JavaScript executed successfully. Result: %s"), UTF8_TO_TCHAR(*utf8));
+		return std::string(*utf8);
 	}
 	else
 	{
 		UE_LOG(LogJs, Warning, TEXT("JavaScript executed but result is empty"));
-		return TEXT("");
+		return std::string();
 	}
 }
 
 void FV8Loader::LoadJsModule(const std::string_view ModuleName, FJsRuntime::FResolveModuleIdFn InResolve, FJsRuntime::FLoadSourceByModuleIdFn InLoadSource)
 {
-	UE_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.data()));
 	if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
 	{
 		UE_LOG(LogJs, Error, TEXT("V8 is not initialized. Cannot load JS module."));
@@ -230,21 +196,43 @@ void FV8Loader::LoadJsModule(const std::string_view ModuleName, FJsRuntime::FRes
 	UE_LOG(LogJs, Log, TEXT("Loading JS module: %s"), *FString(ModuleName.data()));
 	JsModuleManager->LoadModule(ModuleName, InResolve, InLoadSource);
 
-	v8::Local<v8::Value> outResult;
-	JsModuleManager->ExcuteFunction(ModuleName, "hello", std::span<v8::Local<v8::Value>>(), outResult);
-
-	if (!outResult.IsEmpty())
 	{
-		v8::Local<v8::String> s;
-		if (outResult->ToString(ctx).ToLocal(&s))
+		v8::Local<v8::Value> outResult;
+		JsModuleManager->ExcuteFunction(ModuleName, "hello", std::span<v8::Local<v8::Value>>(), outResult);
+
+		if (!outResult.IsEmpty())
 		{
-			v8::String::Utf8Value Utf8(isolate, s);
-			const char* cstr = *Utf8 ? *Utf8 : "";
-			UE_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return=%s"), *FString(UTF8_TO_TCHAR(cstr)));
+			v8::Local<v8::String> s;
+			if (outResult->ToString(ctx).ToLocal(&s))
+			{
+				v8::String::Utf8Value Utf8(isolate, s);
+				const char* cstr = *Utf8 ? *Utf8 : "";
+				UE_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return=%s"), *FString(UTF8_TO_TCHAR(cstr)));
+			}
+			else
+			{
+				UE_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return (non-string)."));
+			}
 		}
-		else
+	}
+	{
+		v8::Local<v8::Value> args[] = {
+			v8::Integer::New(isolate, 10),
+			v8::Integer::New(isolate, 20)
+		};
+		v8::Local<v8::Value> outResult;
+		JsModuleManager->ExcuteFunction(ModuleName, "add", std::span(args), outResult);
+		if (!outResult.IsEmpty())
 		{
-			UE_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return (non-string)."));
+			v8::Local<v8::Number> s;
+			if (outResult->ToNumber(ctx).ToLocal(&s))
+			{
+				UE_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return=%lf"), s->Value());
+			}
+			else
+			{
+				UE_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return (non-number)."));
+			}
 		}
 	}
 }

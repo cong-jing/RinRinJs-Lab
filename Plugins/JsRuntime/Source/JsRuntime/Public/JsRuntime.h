@@ -13,7 +13,7 @@ public:
 	/** IModuleInterface implementation */
 	virtual void ShutdownModule() override;
 
-	void InitialzeRuntime();
+	void StartRuntime();
 	void StopRuntime();
 
 	void LoadJsModule(const std::string_view ModuleName,

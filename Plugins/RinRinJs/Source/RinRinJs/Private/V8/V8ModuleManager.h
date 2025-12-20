@@ -3,15 +3,15 @@
 #include "CoreMinimal.h"
 
 #include "LogHelper.h"
-#include "JsRuntimeDefines.h"
+#include "ModuleResolver.h"
 
 #if defined(_MSC_VER)
-  #pragma warning(push)
-  #pragma warning(disable: 4668)
+#pragma warning(push)
+#pragma warning(disable : 4668)
 #endif
 #include "v8.h"
 #if defined(_MSC_VER)
-  #pragma warning(pop)
+#pragma warning(pop)
 #endif
 
 #include <string>
@@ -20,63 +20,62 @@
 #include <functional>
 #include <span>
 
-
-namespace rinrin::jsruntime {
-
-class FV8ModuleManager
+namespace rinrin::uejs
 {
-public:
-	FV8ModuleManager(v8::Isolate* InIsolate, v8::Local<v8::Context> InContext);
-    ~FV8ModuleManager() { UnloadAll(); }
-    
-    v8::MaybeLocal<v8::Module> LoadModule(
-        std::string_view EntrySpecifier,
-        rinrin::jsruntime::FResolveModuleIdFn InResolve,
-        rinrin::jsruntime::FLoadSourceByModuleIdFn InLoadSource);
 
-    void ExcuteFunction(std::string_view ModuleId,
-        std::string_view FunctionName,
-        std::span<v8::Local<v8::Value>> Args,
-		v8::Local<v8::Value>& OutResult);
+    class FV8ModuleManager
+    {
+    public:
+        FV8ModuleManager(v8::Isolate *InIsolate, v8::Local<v8::Context> InContext);
+        ~FV8ModuleManager() { UnloadAll(); }
 
-    void UnloadAll();
+        v8::MaybeLocal<v8::Module> LoadModule(
+            std::string_view EntrySpecifier,
+            rinrin::uejs::FResolveModuleIdFn InResolve,
+            rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource);
 
-private:
+        void ExcuteFunction(std::string_view ModuleId,
+                            std::string_view FunctionName,
+                            std::span<v8::Local<v8::Value>> Args,
+                            v8::Local<v8::Value> &OutResult);
 
-    bool GetOrCompileModule(std::string_view ReferrerResolvedId,
-        std::string_view RequestSpecifier,
-        v8::Local<v8::Module>& OutModule);
+        void UnloadAll();
 
-    static v8::MaybeLocal<v8::Module> ResolveModuleCallback(
-        v8::Local<v8::Context> context,
-        v8::Local<v8::String> specifier,
-        v8::Local<v8::FixedArray> import_assertions,
-        v8::Local<v8::Module> referrer);
+    private:
+        bool GetOrCompileModule(std::string_view ReferrerResolvedId,
+                                std::string_view RequestSpecifier,
+                                v8::Local<v8::Module> &OutModule);
 
-    void RememberResolvedId(v8::Local<v8::Module> Module, const std::string& ResolvedId);
+        static v8::MaybeLocal<v8::Module> ResolveModuleCallback(
+            v8::Local<v8::Context> context,
+            v8::Local<v8::String> specifier,
+            v8::Local<v8::FixedArray> import_assertions,
+            v8::Local<v8::Module> referrer);
 
-    std::string LookupResolvedId(v8::Local<v8::Module> Module) const;
+        void RememberResolvedId(v8::Local<v8::Module> Module, const std::string &ResolvedId);
 
-    static FV8ModuleManager* GetManager(v8::Local<v8::Context> ctx, v8::Isolate* isolate);
+        std::string LookupResolvedId(v8::Local<v8::Module> Module) const;
 
-    static std::string ToUtf8(v8::Isolate* isolate, v8::Local<v8::String> s);
+        static FV8ModuleManager *GetManager(v8::Local<v8::Context> ctx, v8::Isolate *isolate);
 
-    void ThrowJsError(const char* msg);
+        static std::string ToUtf8(v8::Isolate *isolate, v8::Local<v8::String> s);
 
-private:
-    v8::Isolate* Isolate = nullptr;
-    v8::Global<v8::Context> Context;
+        void ThrowJsError(const char *msg);
 
-    rinrin::jsruntime::FResolveModuleIdFn ResolveModuleId;
-    rinrin::jsruntime::FLoadSourceByModuleIdFn LoadSourceByModuleId;
+    private:
+        v8::Isolate *Isolate = nullptr;
+        v8::Global<v8::Context> Context;
 
-    std::unordered_map<std::string, v8::Global<v8::Module>> ModuleCache;
-    std::unordered_map<void*, std::string> ModuleIdByPtr;
+        rinrin::uejs::FResolveModuleIdFn ResolveModuleId;
+        rinrin::uejs::FLoadSourceByModuleIdFn LoadSourceByModuleId;
 
-    bool bUseContextEmbedder = true;
+        std::unordered_map<std::string, v8::Global<v8::Module>> ModuleCache;
+        std::unordered_map<void *, std::string> ModuleIdByPtr;
 
-    static constexpr int kEmbedderSlot = 0;
-    static constexpr int kIsolateSlot = 0;
-};
+        bool bUseContextEmbedder = true;
 
-} // namespace rinrin::jsruntime
+        static constexpr int kEmbedderSlot = 0;
+        static constexpr int kIsolateSlot = 0;
+    };
+
+} // namespace rinrin::uejs

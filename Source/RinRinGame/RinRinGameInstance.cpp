@@ -4,7 +4,7 @@
 #include "RinRinGameInstance.h"
 #include "Logging/LogMacros.h"
 #include "Modules/ModuleManager.h"
-#include "JsRuntime.h"
+#include "RinRinJs.h"
 
 void URinRinGameInstance::Init()
 {
@@ -14,12 +14,12 @@ void URinRinGameInstance::Init()
 	UE_LOG(LogTemp, Log, TEXT("RinRinGameInstance initialized"));
 
 	// Get the JsRuntime module and initialize it
-	if (FModuleManager::Get().IsModuleLoaded("JsRuntime"))
+	if (FModuleManager::Get().IsModuleLoaded("RinRinJs"))
 	{
-		FJsRuntimeModule& JsRuntimeModule = FModuleManager::GetModuleChecked<FJsRuntimeModule>("JsRuntime");
+		FRinRinJsModule& JsModule = FModuleManager::GetModuleChecked<FRinRinJsModule>("RinRinJs");
 
-		JsRuntimeModule.StartRuntime();
-		JsRuntimeModule.LoadJsModule("main", // Resolve module ID callback
+		JsModule.StartRuntime();
+		JsModule.LoadJsModule("main", // Resolve module ID callback
 			[](std::string_view ReferrerResolvedId,
 				std::string_view RequestSpecifier,
 				std::string& OutResolvedModuleId,
@@ -70,10 +70,10 @@ void URinRinGameInstance::Shutdown()
 	UE_LOG(LogTemp, Log, TEXT("RinRinGameInstance shutting down"));
 
 	// Shutdown JsRuntime module
-	if (FModuleManager::Get().IsModuleLoaded("JsRuntime"))
+	if (FModuleManager::Get().IsModuleLoaded("RinRinJs"))
 	{
-		FJsRuntimeModule& JsRuntimeModule = FModuleManager::GetModuleChecked<FJsRuntimeModule>("JsRuntime");
-		JsRuntimeModule.StopRuntime();
+		FRinRinJsModule& JsModule = FModuleManager::GetModuleChecked<FRinRinJsModule>("RinRinJs");
+		JsModule.StopRuntime();
 	}
 
 	Super::Shutdown();

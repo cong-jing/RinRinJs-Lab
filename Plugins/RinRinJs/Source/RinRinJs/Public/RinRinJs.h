@@ -3,10 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "JsRuntimeDefines.h"
+#include "ModuleResolver.h"
 #include <string>
 
-class RINRINJS_API FJsRuntimeModule : public IModuleInterface
+class RINRINJS_API FRinRinJsModule : public IModuleInterface
 {
 public:
 	virtual void StartupModule() override;
@@ -17,6 +17,6 @@ public:
 	void StopRuntime();
 
 	void LoadJsModule(const std::string_view ModuleName,
-		rinrin::jsruntime::FResolveModuleIdFn InResolve,
-		rinrin::jsruntime::FLoadSourceByModuleIdFn InLoadSource);
+					  rinrin::uejs::FResolveModuleIdFn InResolve,
+					  rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource);
 };

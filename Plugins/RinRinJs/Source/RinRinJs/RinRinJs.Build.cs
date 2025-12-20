@@ -27,7 +27,7 @@ public class RinRinJs : ModuleRules
     }
     private void AddV8()
     {
-        PublicDefinitions.Add("JS_RUNTIME_V8=1");
+        PublicDefinitions.Add("RinRinJs_USE_V8=1");
         PrivateIncludePaths.AddRange(new string[] {
             Path.Combine(ModuleDirectory, "../../ThirdParty/v8/include")
         });
@@ -92,6 +92,7 @@ public class RinRinJs : ModuleRules
 
     private void AddChakraCore()
     {
+        PublicDefinitions.Add("RinRinJs_USE_V8=0");
         PrivateIncludePaths.AddRange(new string[] {
                 Path.Combine(ModuleDirectory, "../../ThirdParty/ChakraCore/include")
         });

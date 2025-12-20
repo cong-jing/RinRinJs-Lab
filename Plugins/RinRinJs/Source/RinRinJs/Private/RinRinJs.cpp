@@ -1,42 +1,42 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "JsRuntime.h"
+#include "RinRinJs.h"
 #include "LogHelper.h"
 #include "Modules/ModuleManager.h"
-#if JS_RUNTIME_V8
+#if RinRinJs_USE_V8
 #include "V8/V8Loader.h"
-using rinrin::jsruntime::FV8Loader;
+using rinrin::uejs::FV8Loader;
 #else
 #include "ChakraCoreLoader.h"
 #endif
 
 DEFINE_LOG_CATEGORY(LogJs)
 
-void FJsRuntimeModule::StartupModule()
+void FRinRinJsModule::StartupModule()
 {
-	rinrin::jsruntime::InitStackWalking();
-#if JS_RUNTIME_V8
-	FV8Loader& V8Loader = FV8Loader::Get();
+	rinrin::uejs::InitStackWalking();
+#if RinRinJs_USE_V8
+	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.EnsureV8ProcessInitialized();
 #else
 #endif
 }
-void FJsRuntimeModule::ShutdownModule()
+void FRinRinJsModule::ShutdownModule()
 {
 	StopRuntime();
-#if JS_RUNTIME_V8
-	FV8Loader& V8Loader = FV8Loader::Get();
+#if RinRinJs_USE_V8
+	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.FinalizeV8Process();
 #else
 #endif
 }
 
-void FJsRuntimeModule::StartRuntime()
+void FRinRinJsModule::StartRuntime()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-#if JS_RUNTIME_V8
+#if RinRinJs_USE_V8
 	// Initialize V8 through V8Loader module
-	FV8Loader& V8Loader = FV8Loader::Get();
+	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.CreateExecutionContext();
 
 	// Test JavaScript execution
@@ -66,7 +66,7 @@ void FJsRuntimeModule::StartRuntime()
 	}
 #else
 	// Initialize ChakraCore through ChakraCoreLoader module
-	FChakraCoreLoaderModule& ChakraCoreLoader = FModuleManager::LoadModuleChecked<FChakraCoreLoaderModule>("ChakraCoreLoader");
+	FChakraCoreLoaderModule &ChakraCoreLoader = FModuleManager::LoadModuleChecked<FChakraCoreLoaderModule>("ChakraCoreLoader");
 	ChakraCoreLoader.InitializeChakraCore();
 
 	// Test JavaScript execution
@@ -92,33 +92,33 @@ void FJsRuntimeModule::StartRuntime()
 	UE_LOG(LogJs, Log, TEXT("RinRinJs module started"));
 }
 
-void FJsRuntimeModule::StopRuntime()
+void FRinRinJsModule::StopRuntime()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
 
-#if JS_RUNTIME_V8
+#if RinRinJs_USE_V8
 	// Shutdown V8 through V8Loader module
-	FV8Loader& V8Loader = FV8Loader::Get();
+	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.DestroyExecutionContext();
 #else
 	// Shutdown ChakraCore through ChakraCoreLoader module
 	if (FModuleManager::Get().IsModuleLoaded("ChakraCoreLoader"))
 	{
-		FChakraCoreLoaderModule& ChakraCoreLoader = FModuleManager::GetModuleChecked<FChakraCoreLoaderModule>("ChakraCoreLoader");
+		FChakraCoreLoaderModule &ChakraCoreLoader = FModuleManager::GetModuleChecked<FChakraCoreLoaderModule>("ChakraCoreLoader");
 		ChakraCoreLoader.ShutdownChakraCore();
 	}
 #endif
 	UE_LOG(LogJs, Log, TEXT("RinRinJs module shutdown"));
 }
 
-void FJsRuntimeModule::LoadJsModule(const std::string_view ModuleName,
-	rinrin::jsruntime::FResolveModuleIdFn InResolve, 
-	rinrin::jsruntime::FLoadSourceByModuleIdFn InLoadSource)
+void FRinRinJsModule::LoadJsModule(const std::string_view ModuleName,
+								   rinrin::uejs::FResolveModuleIdFn InResolve,
+								   rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource)
 {
 	UE_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.data()));
-	FV8Loader& V8Loader = FV8Loader::Get();
+	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
 }
 
-IMPLEMENT_MODULE(FJsRuntimeModule, RinRinJs)
+IMPLEMENT_MODULE(FRinRinJsModule, RinRinJs)

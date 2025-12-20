@@ -3,9 +3,9 @@
 using UnrealBuildTool;
 using System.IO;
 
-public class JsRuntime : ModuleRules
+public class RinRinJs : ModuleRules
 {
-    public JsRuntime(ReadOnlyTargetRules Target) : base(Target)
+    public RinRinJs(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
@@ -34,21 +34,15 @@ public class JsRuntime : ModuleRules
 
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
-            //DisableWarnings.Add(4668);
-            // V8 required definitions for consistency with V8 build
             PublicDefinitions.AddRange(new string[]
             {
                 "V8_COMPRESS_POINTERS",
                 "V8_31BIT_SMIS_ON_64BIT_ARCH",
                 "V8_ENABLE_SANDBOX",
                 "_ITERATOR_DEBUG_LEVEL=0",
-				
-				// Platform and architecture definitions
-				"V8_TARGET_ARCH_X64=1",
+                "V8_TARGET_ARCH_X64=1",
                 "V8_TARGET_ARCH_64_BIT=1",
                 "V8_HOST_ARCH_X64=1",
-				
-				// Set other architectures to 0
                 "V8_TARGET_ARCH_IA32=0",
                 "V8_TARGET_ARCH_32_BIT=0",
                 "V8_TARGET_ARCH_ARM=0",
@@ -67,14 +61,10 @@ public class JsRuntime : ModuleRules
                 "V8_HOST_ARCH_RISCV64=0",
                 "V8_HOST_ARCH_RISCV32=0",
                 "V8_HOST_ARCH_LOONG64=0",
-				
-				// OS definitions
-				"V8_OS_WIN=1",
+                "V8_OS_WIN=1",
                 "V8_OS_DARWIN=0",
                 "V8_OS_FUCHSIA=0",
-				
-				// Disable unused V8 features
-				"V8_HAS_ATTRIBUTE_ALWAYS_INLINE=0",
+                "V8_HAS_ATTRIBUTE_ALWAYS_INLINE=0",
                 "V8_HAS_BUILTIN_ASSUME=0",
                 "V8_HAS_BUILTIN_UNREACHABLE=0",
                 "V8_HAS_ATTRIBUTE_CONST=0",
@@ -92,14 +82,10 @@ public class JsRuntime : ModuleRules
                 "USING_V8_PLATFORM_SHARED=0"
             });
 
-            // Get full path to V8 lib directory (with Release subdirectory)
             string V8LibPath = Path.GetFullPath(Path.Combine(ModuleDirectory, "../../ThirdParty/v8/lib/Win64/Release"));
             string V8LibFile = Path.Combine(V8LibPath, "v8_monolith.lib");
 
-            // Add the full path to the library
             PublicAdditionalLibraries.Add(V8LibFile);
-
-            // Also add to system library paths for good measure
             PublicSystemLibraryPaths.Add(V8LibPath);
         }
     }
@@ -115,13 +101,8 @@ public class JsRuntime : ModuleRules
             string ChakraCoreLibPath = Path.Combine(ModuleDirectory, "../../ThirdParty/ChakraCore/lib/Win64/Release", "ChakraCore.lib");
             string ChakraCoreDllPath = Path.Combine(ModuleDirectory, "../../ThirdParty/ChakraCore/bin/Win64/Release", "ChakraCore.dll");
 
-            // Link against the import library
             PublicAdditionalLibraries.Add(ChakraCoreLibPath);
-
-            // Add as delay load DLL so UE can manage it
             PublicDelayLoadDLLs.Add("ChakraCore.dll");
-
-            // Add runtime dependency for packaging
             RuntimeDependencies.Add(ChakraCoreDllPath);
         }
     }

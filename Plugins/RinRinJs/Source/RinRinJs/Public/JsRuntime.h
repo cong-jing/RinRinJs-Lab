@@ -6,7 +6,7 @@
 #include "JsRuntimeDefines.h"
 #include <string>
 
-class JSRUNTIME_API FJsRuntimeModule : public IModuleInterface
+class RINRINJS_API FJsRuntimeModule : public IModuleInterface
 {
 public:
 	virtual void StartupModule() override;

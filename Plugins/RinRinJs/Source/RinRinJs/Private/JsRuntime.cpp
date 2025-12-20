@@ -89,7 +89,7 @@ void FJsRuntimeModule::StartRuntime()
 		UE_LOG(LogJs, Error, TEXT("ChakraCore is not loaded, cannot execute JavaScript"));
 	}
 #endif
-	UE_LOG(LogJs, Log, TEXT("JsRuntime module started"));
+	UE_LOG(LogJs, Log, TEXT("RinRinJs module started"));
 }
 
 void FJsRuntimeModule::StopRuntime()
@@ -109,7 +109,7 @@ void FJsRuntimeModule::StopRuntime()
 		ChakraCoreLoader.ShutdownChakraCore();
 	}
 #endif
-	UE_LOG(LogJs, Log, TEXT("JsRuntime module shutdown"));
+	UE_LOG(LogJs, Log, TEXT("RinRinJs module shutdown"));
 }
 
 void FJsRuntimeModule::LoadJsModule(const std::string_view ModuleName,
@@ -121,4 +121,4 @@ void FJsRuntimeModule::LoadJsModule(const std::string_view ModuleName,
 	V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
 }
 
-IMPLEMENT_MODULE(FJsRuntimeModule, JsRuntime)
+IMPLEMENT_MODULE(FJsRuntimeModule, RinRinJs)

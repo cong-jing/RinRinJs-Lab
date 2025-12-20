@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 public class RinRinGameEditorTarget : TargetRules
 {
-	public RinRinGameEditorTarget( TargetInfo Target) : base(Target)
+	public RinRinGameEditorTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V6;

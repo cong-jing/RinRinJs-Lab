@@ -1,7 +1,6 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
-#include "JsRuntimeLogger.h"
 #include "JsRuntimeDefines.h"
 #include "V8/V8ModuleManager.h"
 
@@ -28,7 +27,7 @@ class FV8Loader
 public:
 	static FV8Loader& Get()
 	{
-		static FV8Loader instance; // C++11 ????????????
+		static FV8Loader instance; // C++11 ���̰߳�ȫ��ʼ��
 		return instance;
 	}
 

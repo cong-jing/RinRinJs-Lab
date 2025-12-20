@@ -1,5 +1,5 @@
 #include "V8/V8Util.h"
-#include "JsRuntimeLogger.h"
+#include "LogHelper.h"
 #include "CoreMinimal.h"
 
 #if defined(_MSC_VER)

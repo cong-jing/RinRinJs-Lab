@@ -1,6 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
+#include "LogHelper.h"
 #include "JsRuntimeDefines.h"
 
 #if defined(_MSC_VER)
@@ -18,6 +20,7 @@
 #include <functional>
 #include <span>
 
+
 namespace rinrin::jsruntime {
 
 class FV8ModuleManager
@@ -28,8 +31,8 @@ public:
     
     v8::MaybeLocal<v8::Module> LoadModule(
         std::string_view EntrySpecifier,
-        FResolveModuleIdFn InResolve,
-        FLoadSourceByModuleIdFn InLoadSource);
+        rinrin::jsruntime::FResolveModuleIdFn InResolve,
+        rinrin::jsruntime::FLoadSourceByModuleIdFn InLoadSource);
 
     void ExcuteFunction(std::string_view ModuleId,
         std::string_view FunctionName,
@@ -64,8 +67,8 @@ private:
     v8::Isolate* Isolate = nullptr;
     v8::Global<v8::Context> Context;
 
-    FResolveModuleIdFn ResolveModuleId;
-    FLoadSourceByModuleIdFn LoadSourceByModuleId;
+    rinrin::jsruntime::FResolveModuleIdFn ResolveModuleId;
+    rinrin::jsruntime::FLoadSourceByModuleIdFn LoadSourceByModuleId;
 
     std::unordered_map<std::string, v8::Global<v8::Module>> ModuleCache;
     std::unordered_map<void*, std::string> ModuleIdByPtr;

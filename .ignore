@@ -1,0 +1,11 @@
+/.git
+/.idea
+/.vs
+/.vscode
+/Content
+/DerivedDataCache
+/Intermediate
+/Saved
+/Plugins/JsRuntime/Content
+/Plugins/JsRuntime/Intermediate
+/Plugins/JsRuntime/ThirdParty

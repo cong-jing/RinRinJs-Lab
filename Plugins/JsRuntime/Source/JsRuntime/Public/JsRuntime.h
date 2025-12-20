@@ -9,7 +9,7 @@
 class JSRUNTIME_API FJsRuntimeModule : public IModuleInterface
 {
 public:
-
+	virtual void StartupModule() override;
 	/** IModuleInterface implementation */
 	virtual void ShutdownModule() override;
 

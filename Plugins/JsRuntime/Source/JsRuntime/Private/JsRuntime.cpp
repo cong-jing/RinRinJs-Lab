@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "JsRuntime.h"
-#include "JsRuntimeLogger.h"
+#include "LogHelper.h"
 #include "Modules/ModuleManager.h"
 #if JS_RUNTIME_V8
 #include "V8/V8Loader.h"
@@ -12,6 +12,15 @@ using rinrin::jsruntime::FV8Loader;
 
 DEFINE_LOG_CATEGORY(LogJs)
 
+void FJsRuntimeModule::StartupModule()
+{
+	rinrin::jsruntime::InitStackWalking();
+#if JS_RUNTIME_V8
+	FV8Loader& V8Loader = FV8Loader::Get();
+	V8Loader.EnsureV8ProcessInitialized();
+#else
+#endif
+}
 void FJsRuntimeModule::ShutdownModule()
 {
 	StopRuntime();

@@ -4,6 +4,7 @@
 #include "V8/V8Loader.h"
 #include "V8/V8Util.h"
 #include "V8/V8ModuleManager.h"
+#include "LogHelper.h"
 
 #include "CoreMinimal.h"
 #include "Misc/MessageDialog.h"

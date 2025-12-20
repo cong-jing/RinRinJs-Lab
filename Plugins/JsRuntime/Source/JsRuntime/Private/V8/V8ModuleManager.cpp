@@ -1,6 +1,6 @@
 #include "V8/V8ModuleManager.h"
 #include "V8/V8Util.h"
-#include "JsRuntimeLogger.h"
+#include "LogHelper.h"
 
 #if defined(_MSC_VER)
   #pragma warning(push)

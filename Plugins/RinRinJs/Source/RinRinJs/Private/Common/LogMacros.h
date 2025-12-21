@@ -15,6 +15,19 @@ DECLARE_LOG_CATEGORY_EXTERN(LogJs, Log, All);
 #define UEJS_LOG(Category, Verbosity, Fmt, ...) \
     UE_LOG(Category, Verbosity, TEXT("[%s:%s %d] " Fmt), ANSI_TO_TCHAR(__FILE__), ANSI_TO_TCHAR(__FUNCTION__), __LINE__, ##__VA_ARGS__)
 
+#define UEJS_RETURN_ERROR(Fmt, ...) \
+    return ::rinrin::uejs::Err(::rinrin::uejs::FError(FString::Printf(TEXT(Fmt), ##__VA_ARGS__), UEJS_HERE));
+
+#define UEJS_ENSURE_NOT_ERROR(Expected)     \
+    do                                      \
+    {                                       \
+        auto &&__Expected = (Expected);     \
+        if (UNLIKELY(!__Expected))          \
+        {                                   \
+            return Err(__Expected.Error()); \
+        }                                   \
+    } while (0)
+
 // --------------------
 // ENSURE 版本：只输出一次（走 ensure 通道），每次都返回错误对象
 // --------------------

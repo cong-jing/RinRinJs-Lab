@@ -51,12 +51,9 @@ namespace rinrin::uejs
 
         v8::TryCatch try_catch(Isolate);
 
-        TExpected<v8::Local<v8::Module>> rootExpected = GetOrCompileModule(/*referrerResolvedId=*/"", EntrySpecifier);
-        if (!rootExpected)
-        {
-            return Err(rootExpected.Error());
-        }
-        v8::Local<v8::Module> root = rootExpected.Value();
+        TExpected<v8::Local<v8::Module>> compileResult = GetOrCompileModule(/*referrerResolvedId=*/"", EntrySpecifier);
+        UEJS_ENSURE_NOT_ERROR(compileResult);
+        v8::Local<v8::Module> root = compileResult.Value();
 
         UEJS_LOG(LogJs, Verbose, "compiled root, status=%d", (int)root->GetStatus());
 
@@ -66,10 +63,7 @@ namespace rinrin::uejs
             v8::Maybe<bool> ok = root->InstantiateModule(ctx, &FV8ModuleManager::ResolveModuleCallback);
             if (ok.IsNothing() || !ok.FromJust())
             {
-                FError err("instantiate failed", UEJS_HERE);
-                err.SetV8(FV8TryCatchInfo(Isolate, try_catch));
-                err.Log(LogJs, ELogVerbosity::Error);
-                return Err(MoveTemp(err));
+                return Err(FError("instantiate failed", FJsStackInfo(Isolate, try_catch), UEJS_HERE));
             }
         }
 
@@ -79,11 +73,7 @@ namespace rinrin::uejs
             v8::Local<v8::Value> eval;
             if (!root->Evaluate(ctx).ToLocal(&eval))
             {
-                // UEJS_LOG_ONCE_AND_RETURN_ERR(LogJs, false, TEXT("LoadModule: evaluate failed"));
-                FError err("LoadModule: evaluate failed", UEJS_HERE);
-                err.SetV8(FV8TryCatchInfo(Isolate, try_catch));
-                err.Log(LogJs, ELogVerbosity::Error);
-                return Err(MoveTemp(err));
+                return Err(FError("Evaluate failed", FJsStackInfo(Isolate, try_catch), UEJS_HERE));
             }
         }
 
@@ -130,6 +120,7 @@ namespace rinrin::uejs
         TExpected<v8::Local<v8::Module>> result = mgr->GetOrCompileModule(referrerId, request);
         if (!result)
         {
+            result.Error().Log(LogJs, ELogVerbosity::Error);
             return v8::MaybeLocal<v8::Module>();
         }
 
@@ -149,11 +140,9 @@ namespace rinrin::uejs
 
         if (!ResolveModuleId(ReferrerResolvedId, RequestSpecifier, resolvedId, err))
         {
-            UEJS_LOG_ONCE_AND_RETURN_ERR(
-                LogJs,
-                "GetOrCompileModule: ResolveModuleId failed for '%s': %s",
-                *FString(RequestSpecifier.data()),
-                *FString(err.c_str()));
+            UEJS_RETURN_ERROR("GetOrCompileModule: ResolveModuleId failed for '%s': %s",
+                              *FString(RequestSpecifier.data()),
+                              *FString(err.c_str()));
         }
 
         UEJS_LOG(LogJs, Verbose, "GetOrCompileModule: resolved '%s' -> '%s'", *FString(RequestSpecifier.data()), *FString(resolvedId.c_str()));
@@ -167,8 +156,7 @@ namespace rinrin::uejs
         std::string sourceUtf8;
         if (!LoadSourceByModuleId(resolvedId, sourceUtf8, err))
         {
-            UEJS_LOG_ONCE_AND_RETURN_ERR(
-                LogJs,
+            UEJS_RETURN_ERROR(
                 "LoadSourceByModuleId failed for '%s': %s",
                 *FString(resolvedId.c_str()),
                 *FString(err.c_str()));
@@ -184,8 +172,7 @@ namespace rinrin::uejs
         v8::Local<v8::String> sourceStr;
         if (!v8::String::NewFromUtf8(Isolate, sourceUtf8.c_str(), v8::NewStringType::kNormal).ToLocal(&sourceStr))
         {
-            UEJS_LOG_ONCE_AND_RETURN_ERR(
-                LogJs,
+            UEJS_RETURN_ERROR(
                 "Create source string failed for '%s'",
                 *FString(resolvedId.c_str()));
         }
@@ -195,8 +182,7 @@ namespace rinrin::uejs
                                      v8::NewStringType::kNormal)
                  .ToLocal(&resourceName))
         {
-            UEJS_LOG_ONCE_AND_RETURN_ERR(
-                LogJs,
+            UEJS_RETURN_ERROR(
                 "Create resourceName failed for '%s'",
                 *FString(resolvedId.c_str()));
         }
@@ -211,10 +197,7 @@ namespace rinrin::uejs
         v8::Local<v8::Module> mod;
         if (!v8::ScriptCompiler::CompileModule(Isolate, &sc).ToLocal(&mod))
         {
-            FError compileErr("CompileModule failed", UEJS_HERE);
-            compileErr.SetV8(FV8TryCatchInfo(Isolate, try_catch));
-            compileErr.Log(LogJs, ELogVerbosity::Error);
-            return Err(compileErr);
+            return Err(FError("CompileModule failed", FJsStackInfo(Isolate, try_catch), UEJS_HERE));
         }
         ModuleCache.emplace(resolvedId, v8::Global<v8::Module>(Isolate, mod));
         RememberResolvedId(mod, resolvedId);
@@ -296,7 +279,7 @@ namespace rinrin::uejs
             if (EvalResult.IsEmpty())
             {
                 FError err("ExcuteFunction: Evaluate failed", UEJS_HERE);
-                err.SetV8(FV8TryCatchInfo(isolate, try_catch));
+                err.SetJsStack(FJsStackInfo(isolate, try_catch));
                 err.Log(LogJs, ELogVerbosity::Error);
                 return Err(MoveTemp(err));
             }
@@ -329,7 +312,7 @@ namespace rinrin::uejs
         if (!targetFn->Call(ctx, v8::Undefined(isolate), Args.size(), Args.data()).ToLocal(&ret))
         {
             FError err("ExcuteFunction: Call failed", UEJS_HERE);
-            err.SetV8(FV8TryCatchInfo(isolate, try_catch));
+            err.SetJsStack(FJsStackInfo(isolate, try_catch));
             err.Log(LogJs, ELogVerbosity::Error);
             return Err(MoveTemp(err));
         }

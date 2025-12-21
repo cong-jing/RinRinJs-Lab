@@ -27,7 +27,7 @@ namespace rinrin::uejs
                                ANSI_TO_TCHAR(Function ? Function : ""));
     }
 
-    FV8TryCatchInfo::FV8TryCatchInfo(v8::Isolate *Isolate, const v8::TryCatch &TryCatch)
+    FJsStackInfo::FJsStackInfo(v8::Isolate *Isolate, const v8::TryCatch &TryCatch)
     {
         if (!TryCatch.HasCaught())
         {
@@ -137,43 +137,43 @@ namespace rinrin::uejs
             B.Append(TEXT("\n"));
         }
 
-        if (bIncludeV8 && V8Info.IsSet())
+        if (bIncludeV8 && JsInfo.IsSet())
         {
-            B.Append(TEXT("V8:\n"));
+            B.Append(TEXT("JavaScript:\n"));
 
-            if (!V8Info.Message.IsEmpty())
+            if (!JsInfo.Message.IsEmpty())
             {
                 B.Append(TEXT("  Message: "));
-                B.Append(V8Info.Message);
+                B.Append(JsInfo.Message);
                 B.Append(TEXT("\n"));
             }
 
-            if (!V8Info.ScriptName.IsEmpty())
+            if (!JsInfo.ScriptName.IsEmpty())
             {
                 B.Append(TEXT("  Script: "));
-                B.Append(V8Info.ScriptName);
+                B.Append(JsInfo.ScriptName);
                 B.Append(TEXT("\n"));
             }
 
-            if (V8Info.Line >= 0 || V8Info.Column >= 0)
+            if (JsInfo.Line >= 0 || JsInfo.Column >= 0)
             {
                 B.Append(TEXT("  Line/Col: "));
-                B.Append(FString::Printf(TEXT("%d:%d"), V8Info.Line, V8Info.Column));
+                B.Append(FString::Printf(TEXT("%d:%d"), JsInfo.Line, JsInfo.Column));
                 B.Append(TEXT("\n"));
             }
 
-            if (!V8Info.SourceLine.IsEmpty())
+            if (!JsInfo.SourceLine.IsEmpty())
             {
                 B.Append(TEXT("  Source: "));
-                B.Append(V8Info.SourceLine);
+                B.Append(JsInfo.SourceLine);
                 B.Append(TEXT("\n"));
             }
 
-            if (!V8Info.Stack.IsEmpty())
+            if (!JsInfo.Stack.IsEmpty())
             {
                 B.Append(TEXT("  Stack:\n"));
-                B.Append(V8Info.Stack);
-                if (!V8Info.Stack.EndsWith(TEXT("\n")))
+                B.Append(JsInfo.Stack);
+                if (!JsInfo.Stack.EndsWith(TEXT("\n")))
                 {
                     B.Append(TEXT("\n"));
                 }

@@ -83,14 +83,10 @@ strip_debug_info = false
   - 开发期对“不变量失败”使用 UE 风格的 `ensureMsgf / checkf`（确保能快速暴露错误）；
   - 同时需要把错误**结构化返回**到上层（而不是只打印 log），便于调用方决定 UI/降级/中止策略；
   - 强烈需求：**日志必须能定位来源（文件名+行号）**，并且 **Error 及以上必须输出堆栈**（UE 默认 log 不带堆栈，定位效率不足）。
-- 技术落地（Windows/UE5）已对齐实际签名：
-  - 使用 `FPlatformStackWalk::StackWalkAndDump(ANSICHAR* Buffer, SIZE_T Size, int32 IgnoreCount, ...)` 生成堆栈文本；
-  - 转换为 `FString` 并在错误对象中携带（对齐 JS/C# `Exception.StackTrace` 体验）。
 - 进一步的日志输出策略已明确（目标行为）：
   - **一般日志**：默认打印 `file(line):function` 前缀；可通过宏开关切换为普通 `UE_LOG` 风格；
   - **Error（含）以上日志**：自动追加堆栈文本（同样可通过宏开关控制是否启用）；
   - 错误对象向上返回时，尽量同样携带堆栈与位置，便于上层显示或上报。
-
 ---
 
 ## 6. 当前工程状态画像（完成项 vs 进行中）
@@ -98,11 +94,10 @@ strip_debug_info = false
 - 已完成/已明确：
   - 插件 Module 生命周期与 UE 启动/Editor/打包差异的关键认知与骨架；
   - JS 引擎嵌入路线的现实工程风险识别（QuickJS 放弃、V8 集成复杂度评估、ChakraCore 作为候选）；
-  - C++20 协程/awaitable 的抽象目标与落地方式方向；
-  - 错误处理与可观测性方案：`ensure/check` + 结构化错误返回 + Windows 堆栈捕获（签名已对齐）。
 - 正在推进/待落地：
   - 最终确定并稳定集成目标 JS 引擎（V8 或 ChakraCore），解决宏定义/UBT/CRT/Editor 重启等一致性问题；
-  - 将“协程/awaitable + 统一错误对象 + 日志策略”贯穿到对外 API 调用链，形成稳定可复用的工程范式；
-  - 在 Editor 与打包环境下验证初始化/销毁、脚本执行、错误传播与调试体验的一致性。
+  - 使用FError来获取当前堆栈信息
+  - 创建TExpected class来返回值或是FError
+
 
 ---

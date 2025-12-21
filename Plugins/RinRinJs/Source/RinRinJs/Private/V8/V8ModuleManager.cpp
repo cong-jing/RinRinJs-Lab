@@ -1,6 +1,6 @@
 #include "V8/V8ModuleManager.h"
 #include "V8/V8Util.h"
-#include "LogHelper.h"
+#include "Common/LogMacros.h"
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -14,7 +14,6 @@
 
 namespace rinrin::uejs
 {
-
     FV8ModuleManager::FV8ModuleManager(
         v8::Isolate *InIsolate,
         v8::Local<v8::Context> InContext)
@@ -33,15 +32,15 @@ namespace rinrin::uejs
         }
     }
 
-    v8::MaybeLocal<v8::Module> FV8ModuleManager::LoadModule(
+    rinrin::uejs::TExpected<v8::Local<v8::Module>> FV8ModuleManager::LoadModule(
         std::string_view EntrySpecifier,
         FResolveModuleIdFn InResolve,
         FLoadSourceByModuleIdFn InLoadSource)
     {
-        UE_LOG(LogJs, Verbose, TEXT("LoadModule: entry='%s'"), *FString(EntrySpecifier.data()));
+        UEJS_LOG(LogJs, Verbose, "entry='%s'", *FString(EntrySpecifier.data()));
 
         if (!Isolate || Context.IsEmpty())
-            return v8::MaybeLocal<v8::Module>();
+            UEJS_LOG_ONCE_AND_RETURN_ERR(LogJs, false, "invalid isolate or context");
 
         ResolveModuleId = std::move(InResolve);
         LoadSourceByModuleId = std::move(InLoadSource);
@@ -55,13 +54,13 @@ namespace rinrin::uejs
 
         v8::Local<v8::Module> root;
         if (!GetOrCompileModule(/*referrerResolvedId=*/"", EntrySpecifier, root))
-            return v8::MaybeLocal<v8::Module>();
+            UEJS_LOG_ONCE_AND_RETURN_ERR(LogJs, false, "failed to get or compile root module");
 
-        UE_LOG(LogJs, Verbose, TEXT("LoadModule: compiled root, status=%d"), (int)root->GetStatus());
+        UEJS_LOG(LogJs, Verbose, "compiled root, status=%d", (int)root->GetStatus());
 
         if (root->GetStatus() < v8::Module::kInstantiated)
         {
-            UE_LOG(LogJs, Verbose, TEXT("LoadModule: instantiating"));
+            UEJS_LOG(LogJs, Verbose, "instantiating");
             v8::Maybe<bool> ok = root->InstantiateModule(ctx, &FV8ModuleManager::ResolveModuleCallback);
             if (ok.IsNothing() || !ok.FromJust())
             {
@@ -69,27 +68,28 @@ namespace rinrin::uejs
                 {
                     V8Util::LogTryCatch(Isolate, try_catch, TEXT("LoadModule/Instantiate"));
                 }
-                UE_LOG(LogJs, Error, TEXT("LoadModule: instantiate failed"));
-                return v8::MaybeLocal<v8::Module>();
+                FError err("instantiate failed", UEJS_HERE);
+                err.SetV8(rinrin::uejs::FV8TryCatchInfo(Isolate, try_catch));
+                err.Log(LogJs, ELogVerbosity::Error);
+                return Err(MoveTemp(err));
             }
         }
 
         if (root->GetStatus() < v8::Module::kEvaluated)
         {
-            UE_LOG(LogJs, Verbose, TEXT("LoadModule: evaluating"));
+            UEJS_LOG(LogJs, Verbose, "evaluating");
             v8::Local<v8::Value> eval;
             if (!root->Evaluate(ctx).ToLocal(&eval))
             {
-                if (try_catch.HasCaught())
-                {
-                    V8Util::LogTryCatch(Isolate, try_catch, TEXT("LoadModule/Evaluate"));
-                }
-                UE_LOG(LogJs, Error, TEXT("LoadModule: evaluate failed"));
-                return v8::MaybeLocal<v8::Module>();
+                // UEJS_LOG_ONCE_AND_RETURN_ERR(LogJs, false, TEXT("LoadModule: evaluate failed"));
+                FError err("LoadModule: evaluate failed", UEJS_HERE);
+                err.SetV8(rinrin::uejs::FV8TryCatchInfo(Isolate, try_catch));
+                err.Log(LogJs, ELogVerbosity::Error);
+                return Err(MoveTemp(err));
             }
         }
 
-        UE_LOG(LogJs, Verbose, TEXT("LoadModule complete. entry='%s'"), *FString(EntrySpecifier.data()));
+        UEJS_LOG(LogJs, Verbose, "LoadModule complete. entry='%s'", *FString(EntrySpecifier.data()));
         return root;
     }
 
@@ -156,11 +156,11 @@ namespace rinrin::uejs
             return false;
         }
 
-        UE_LOG(LogJs, Verbose, TEXT("GetOrCompileModule: resolved '%s' -> '%s'"), *FString(RequestSpecifier.data()), *FString(resolvedId.c_str()));
+        UEJS_LOG(LogJs, Verbose, TEXT("GetOrCompileModule: resolved '%s' -> '%s'"), *FString(RequestSpecifier.data()), *FString(resolvedId.c_str()));
 
         if (auto it = ModuleCache.find(resolvedId); it != ModuleCache.end())
         {
-            UE_LOG(LogJs, Verbose, TEXT("GetOrCompileModule: cache hit '%s'"), *FString(resolvedId.c_str()));
+            UEJS_LOG(LogJs, Verbose, TEXT("GetOrCompileModule: cache hit '%s'"), *FString(resolvedId.c_str()));
             OutModule = it->second.Get(Isolate);
             return true;
         }
@@ -168,12 +168,12 @@ namespace rinrin::uejs
         std::string sourceUtf8;
         if (!LoadSourceByModuleId(resolvedId, sourceUtf8, err))
         {
-            UE_LOG(LogJs, Error, TEXT("GetOrCompileModule: LoadSourceByModuleId failed for '%s': %s"), *FString(resolvedId.c_str()), *FString(err.c_str()));
+            UEJS_LOG(LogJs, Error, TEXT("GetOrCompileModule: LoadSourceByModuleId failed for '%s': %s"), *FString(resolvedId.c_str()), *FString(err.c_str()));
             ThrowJsError(err.empty() ? "LoadSourceByModuleId failed." : err.c_str());
             return false;
         }
 
-        UE_LOG(LogJs, Verbose, TEXT("GetOrCompileModule: compiling '%s' (source length=%d)"), *FString(resolvedId.c_str()), (int)sourceUtf8.size());
+        UEJS_LOG(LogJs, Verbose, TEXT("GetOrCompileModule: compiling '%s' (source length=%d)"), *FString(resolvedId.c_str()), (int)sourceUtf8.size());
 
         v8::Local<v8::Context> ctx = Context.Get(Isolate);
         v8::Context::Scope cs(ctx);
@@ -181,7 +181,7 @@ namespace rinrin::uejs
         v8::Local<v8::String> sourceStr;
         if (!v8::String::NewFromUtf8(Isolate, sourceUtf8.c_str(), v8::NewStringType::kNormal).ToLocal(&sourceStr))
         {
-            UE_LOG(LogJs, Error, TEXT("GetOrCompileModule: Create source string failed for '%s'"), *FString(resolvedId.c_str()));
+            UEJS_LOG(LogJs, Error, TEXT("GetOrCompileModule: Create source string failed for '%s'"), *FString(resolvedId.c_str()));
             ThrowJsError("Create source string failed.");
             return false;
         }
@@ -191,7 +191,7 @@ namespace rinrin::uejs
                                      v8::NewStringType::kNormal)
                  .ToLocal(&resourceName))
         {
-            UE_LOG(LogJs, Error, TEXT("GetOrCompileModule: Create resourceName failed for '%s'"), *FString(resolvedId.c_str()));
+            UEJS_LOG(LogJs, Error, TEXT("GetOrCompileModule: Create resourceName failed for '%s'"), *FString(resolvedId.c_str()));
             ThrowJsError("Create resourceName failed.");
             return false;
         }
@@ -206,7 +206,7 @@ namespace rinrin::uejs
         v8::Local<v8::Module> mod;
         if (!v8::ScriptCompiler::CompileModule(Isolate, &sc).ToLocal(&mod))
         {
-            UE_LOG(LogJs, Error, TEXT("GetOrCompileModule: CompileModule failed for '%s'"), *FString(resolvedId.c_str()));
+            UEJS_LOG(LogJs, Error, TEXT("GetOrCompileModule: CompileModule failed for '%s'"), *FString(resolvedId.c_str()));
             if (try_catch.HasCaught())
             {
                 V8Util::LogTryCatch(Isolate, try_catch, TEXT("GetOrCompileModule/Compile"));
@@ -262,12 +262,12 @@ namespace rinrin::uejs
                                           std::span<v8::Local<v8::Value>> Args,
                                           v8::Local<v8::Value> &OutResult)
     {
-        UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: ModuleId='%s', FunctionName='%s'"), *FString(ModuleId.data()), *FString(FunctionName.data()));
+        UEJS_LOG(LogJs, Verbose, TEXT("ExcuteFunction: ModuleId='%s', FunctionName='%s'"), *FString(ModuleId.data()), *FString(FunctionName.data()));
 
         v8::Isolate *isolate = Isolate;
         if (!isolate || Context.IsEmpty())
         {
-            UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Isolate or Context not initialized."));
+            UEJS_LOG(LogJs, Error, TEXT("ExcuteFunction: Isolate or Context not initialized."));
             return;
         }
 
@@ -280,22 +280,22 @@ namespace rinrin::uejs
         auto it = ModuleCache.find(std::string(ModuleId));
         if (it == ModuleCache.end())
         {
-            UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Module '%s' not found in cache."), *FString(ModuleId.data()));
+            UEJS_LOG(LogJs, Error, TEXT("ExcuteFunction: Module '%s' not found in cache."), *FString(ModuleId.data()));
             return;
         }
 
         v8::Local<v8::Module> foundedModule = it->second.Get(isolate);
         if (foundedModule.IsEmpty())
         {
-            UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Found module is empty for '%s'."), *FString(ModuleId.data()));
+            UEJS_LOG(LogJs, Error, TEXT("ExcuteFunction: Found module is empty for '%s'."), *FString(ModuleId.data()));
             return;
         }
 
-        UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: module status=%d"), (int)foundedModule->GetStatus());
+        UEJS_LOG(LogJs, Verbose, TEXT("ExcuteFunction: module status=%d"), (int)foundedModule->GetStatus());
 
         if (foundedModule->GetStatus() < v8::Module::kEvaluated)
         {
-            UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: evaluating module"));
+            UEJS_LOG(LogJs, Verbose, TEXT("ExcuteFunction: evaluating module"));
             v8::MaybeLocal<v8::Value> EvalResult = foundedModule->Evaluate(ctx);
             if (EvalResult.IsEmpty())
             {
@@ -303,17 +303,17 @@ namespace rinrin::uejs
                 {
                     V8Util::LogTryCatch(isolate, try_catch, TEXT("ExcuteFunction/Evaluate"));
                 }
-                UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Evaluate failed for module '%s'."), *FString(ModuleId.data()));
+                UEJS_LOG(LogJs, Error, TEXT("ExcuteFunction: Evaluate failed for module '%s'."), *FString(ModuleId.data()));
                 return;
             }
             isolate->PerformMicrotaskCheckpoint();
         }
 
-        UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: retrieving module namespace"));
+        UEJS_LOG(LogJs, Verbose, TEXT("ExcuteFunction: retrieving module namespace"));
         v8::Local<v8::Value> moduleNsVal = foundedModule->GetModuleNamespace();
         if (moduleNsVal.IsEmpty() || !moduleNsVal->IsObject())
         {
-            UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Module namespace is not an object for '%s'."), *FString(ModuleId.data()));
+            UEJS_LOG(LogJs, Error, TEXT("ExcuteFunction: Module namespace is not an object for '%s'."), *FString(ModuleId.data()));
             return;
         }
         v8::Local<v8::Object> moduleNameSpace = moduleNsVal.As<v8::Object>();
@@ -321,15 +321,15 @@ namespace rinrin::uejs
         v8::Local<v8::String> funKey;
         if (!v8::String::NewFromUtf8(isolate, std::string(FunctionName).c_str(), v8::NewStringType::kNormal).ToLocal(&funKey))
         {
-            UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Failed to create function key string for '%s'."), *FString(FunctionName.data()));
+            UEJS_LOG(LogJs, Error, TEXT("ExcuteFunction: Failed to create function key string for '%s'."), *FString(FunctionName.data()));
             return;
         }
 
-        UE_LOG(LogJs, Verbose, TEXT("ExcuteFunction: looking up export"));
+        UEJS_LOG(LogJs, Verbose, TEXT("ExcuteFunction: looking up export"));
         v8::Local<v8::Value> funVal;
         if (!moduleNameSpace->Get(ctx, funKey).ToLocal(&funVal) || !funVal->IsFunction())
         {
-            UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Export '%s' not found or not a function in module '%s'."), *FString(FunctionName.data()), *FString(ModuleId.data()));
+            UEJS_LOG(LogJs, Error, TEXT("ExcuteFunction: Export '%s' not found or not a function in module '%s'."), *FString(FunctionName.data()), *FString(ModuleId.data()));
             return;
         }
         v8::Local<v8::Function> targetFn = funVal.As<v8::Function>();
@@ -341,7 +341,7 @@ namespace rinrin::uejs
             {
                 V8Util::LogTryCatch(isolate, try_catch, TEXT("ExcuteFunction/Call"));
             }
-            UE_LOG(LogJs, Error, TEXT("ExcuteFunction: Call failed for '%s' in module '%s'."), *FString(FunctionName.data()), *FString(ModuleId.data()));
+            UEJS_LOG(LogJs, Error, TEXT("ExcuteFunction: Call failed for '%s' in module '%s'."), *FString(FunctionName.data()), *FString(ModuleId.data()));
             return;
         }
 

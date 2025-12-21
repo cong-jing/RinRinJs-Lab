@@ -2,8 +2,8 @@
 
 #include "CoreMinimal.h"
 
-#include "LogHelper.h"
 #include "ModuleResolver.h"
+#include "Common/LogMacros.h"
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -29,7 +29,7 @@ namespace rinrin::uejs
         FV8ModuleManager(v8::Isolate *InIsolate, v8::Local<v8::Context> InContext);
         ~FV8ModuleManager() { UnloadAll(); }
 
-        v8::MaybeLocal<v8::Module> LoadModule(
+        rinrin::uejs::TExpected<v8::Local<v8::Module>> LoadModule(
             std::string_view EntrySpecifier,
             rinrin::uejs::FResolveModuleIdFn InResolve,
             rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource);

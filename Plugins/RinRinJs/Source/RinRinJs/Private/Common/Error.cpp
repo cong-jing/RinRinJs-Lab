@@ -127,8 +127,6 @@ namespace rinrin::uejs
     {
         TStringBuilder<4096> B;
 
-        B.Append(TEXT("UEJS Error\n"));
-        B.Append(TEXT("Message: "));
         B.Append(Message);
         B.Append(TEXT("\n"));
 

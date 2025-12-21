@@ -30,7 +30,8 @@ namespace rinrin::uejs
         TExpected(Unexpected e) : V(TInPlaceType<FError>(), MoveTemp(e.Error)) {}
 
         bool HasValue() const { return V.template IsType<T>(); }
-        explicit operator bool() const { return HasValue(); }
+        bool HasError() const { return V.template IsType<FError>(); }
+        explicit operator bool() const { return !HasError(); }
 
         T &Value()
         {
@@ -59,5 +60,41 @@ namespace rinrin::uejs
 
     private:
         TVariant<T, FError> V;
+    };
+
+    // Specialization for void
+    template <>
+    class TExpected<void>
+    {
+    public:
+        // Default constructor for success
+        TExpected() : bHasError(false) {}
+
+        // Errors must be wrapped with Err()
+        TExpected(Unexpected e) : ErrorValue(MoveTemp(e.Error)), bHasError(true) {}
+
+        bool HasValue() const { return !bHasError; }
+        bool HasError() const { return bHasError; }
+        explicit operator bool() const { return !HasError(); }
+
+        void Value() const
+        {
+            check(HasValue());
+        }
+
+        FError &Error()
+        {
+            check(HasError());
+            return ErrorValue;
+        }
+        const FError &Error() const
+        {
+            check(HasError());
+            return ErrorValue;
+        }
+
+    private:
+        FError ErrorValue;
+        bool bHasError;
     };
 }

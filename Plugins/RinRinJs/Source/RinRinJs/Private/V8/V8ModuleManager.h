@@ -29,22 +29,21 @@ namespace rinrin::uejs
         FV8ModuleManager(v8::Isolate *InIsolate, v8::Local<v8::Context> InContext);
         ~FV8ModuleManager() { UnloadAll(); }
 
-        rinrin::uejs::TExpected<v8::Local<v8::Module>> LoadModule(
+        TExpected<v8::Local<v8::Module>> LoadModule(
             std::string_view EntrySpecifier,
             rinrin::uejs::FResolveModuleIdFn InResolve,
             rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource);
 
-        void ExcuteFunction(std::string_view ModuleId,
-                            std::string_view FunctionName,
-                            std::span<v8::Local<v8::Value>> Args,
-                            v8::Local<v8::Value> &OutResult);
+        TExpected<void> ExcuteFunction(std::string_view ModuleId,
+                                       std::string_view FunctionName,
+                                       std::span<v8::Local<v8::Value>> Args,
+                                       v8::Local<v8::Value> &OutResult);
 
         void UnloadAll();
 
     private:
-        bool GetOrCompileModule(std::string_view ReferrerResolvedId,
-                                std::string_view RequestSpecifier,
-                                v8::Local<v8::Module> &OutModule);
+        TExpected<v8::Local<v8::Module>> GetOrCompileModule(std::string_view ReferrerResolvedId,
+                                                            std::string_view RequestSpecifier);
 
         static v8::MaybeLocal<v8::Module> ResolveModuleCallback(
             v8::Local<v8::Context> context,
@@ -59,8 +58,6 @@ namespace rinrin::uejs
         static FV8ModuleManager *GetManager(v8::Local<v8::Context> ctx, v8::Isolate *isolate);
 
         static std::string ToUtf8(v8::Isolate *isolate, v8::Local<v8::String> s);
-
-        void ThrowJsError(const char *msg);
 
     private:
         v8::Isolate *Isolate = nullptr;

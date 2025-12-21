@@ -50,41 +50,29 @@ DECLARE_LOG_CATEGORY_EXTERN(LogJs, Log, All);
 // --------------------
 
 // 默认用 Error verbosity；也可按需要做一个带 Verbosity 参数的版本
-#define UEJS_LOG_ONCE_AND_RETURN_ERR(Category, Cond, Fmt, ...)                                                     \
-    do                                                                                                             \
-    {                                                                                                              \
-        if (LIKELY(Cond))                                                                                          \
-        {                                                                                                          \
-        }                                                                                                          \
-        else                                                                                                       \
-        {                                                                                                          \
-            ::rinrin::uejs::FError _UejsErr(FString::Printf(TEXT(Fmt), ##__VA_ARGS__), UEJS_HERE);                 \
-            static bool _UejsLoggedOnce = false;                                                                   \
-            if (!_UejsLoggedOnce)                                                                                  \
-            {                                                                                                      \
-                _UejsLoggedOnce = true;                                                                            \
-                _UejsErr.Log((Category), ELogVerbosity::Error, /*bIncludeV8=*/true, /*bIncludeNativeStack=*/true); \
-            }                                                                                                      \
-            return ::rinrin::uejs::Err(MoveTemp(_UejsErr));                                                        \
-        }                                                                                                          \
+#define UEJS_LOG_ONCE_AND_RETURN_ERR(Category, Fmt, ...)                                                       \
+    do                                                                                                         \
+    {                                                                                                          \
+        ::rinrin::uejs::FError _UejsErr(FString::Printf(TEXT(Fmt), ##__VA_ARGS__), UEJS_HERE);                 \
+        static bool _UejsLoggedOnce = false;                                                                   \
+        if (!_UejsLoggedOnce)                                                                                  \
+        {                                                                                                      \
+            _UejsLoggedOnce = true;                                                                            \
+            _UejsErr.Log((Category), ELogVerbosity::Error, /*bIncludeV8=*/true, /*bIncludeNativeStack=*/true); \
+        }                                                                                                      \
+        return ::rinrin::uejs::Err(MoveTemp(_UejsErr));                                                        \
     } while (0)
 
 // 带 Verbosity 的版本（可选，但通常很实用）
-#define UEJS_LOG_ONCE_V_AND_RETURN_ERR(Category, Verbosity, Cond, Fmt, ...)                               \
-    do                                                                                                    \
-    {                                                                                                     \
-        if (LIKELY(Cond))                                                                                 \
-        {                                                                                                 \
-        }                                                                                                 \
-        else                                                                                              \
-        {                                                                                                 \
-            ::rinrin::uejs::FError _UejsErr(FString::Printf(TEXT(Fmt), ##__VA_ARGS__), UEJS_HERE);        \
-            static bool _UejsLoggedOnce = false;                                                          \
-            if (!_UejsLoggedOnce)                                                                         \
-            {                                                                                             \
-                _UejsLoggedOnce = true;                                                                   \
-                _UejsErr.Log((Category), (Verbosity), /*bIncludeV8=*/true, /*bIncludeNativeStack=*/true); \
-            }                                                                                             \
-            return ::rinrin::uejs::Err(MoveTemp(_UejsErr));                                               \
-        }                                                                                                 \
+#define UEJS_LOG_ONCE_V_AND_RETURN_ERR(Category, Verbosity, Fmt, ...)                                 \
+    do                                                                                                \
+    {                                                                                                 \
+        ::rinrin::uejs::FError _UejsErr(FString::Printf(TEXT(Fmt), ##__VA_ARGS__), UEJS_HERE);        \
+        static bool _UejsLoggedOnce = false;                                                          \
+        if (!_UejsLoggedOnce)                                                                         \
+        {                                                                                             \
+            _UejsLoggedOnce = true;                                                                   \
+            _UejsErr.Log((Category), (Verbosity), /*bIncludeV8=*/true, /*bIncludeNativeStack=*/true); \
+        }                                                                                             \
+        return ::rinrin::uejs::Err(MoveTemp(_UejsErr));                                               \
     } while (0)

@@ -111,13 +111,13 @@ void FRinRinJsModule::StopRuntime()
 	UEJS_LOG(LogJs, Log, TEXT("RinRinJs module shutdown"));
 }
 
-void FRinRinJsModule::LoadJsModule(const std::string_view ModuleName,
-								   rinrin::uejs::FResolveModuleIdFn InResolve,
-								   rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource)
+rinrin::uejs::TExpected<void> FRinRinJsModule::LoadJsModule(const std::string_view ModuleName,
+															rinrin::uejs::FResolveModuleIdFn InResolve,
+															rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource)
 {
 	UEJS_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.data()));
 	FV8Loader &V8Loader = FV8Loader::Get();
-	V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
+	return V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
 }
 
 IMPLEMENT_MODULE(FRinRinJsModule, RinRinJs)

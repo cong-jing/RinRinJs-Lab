@@ -175,12 +175,12 @@ namespace rinrin::uejs
 		}
 	}
 
-	void FV8Loader::LoadJsModule(const std::string_view ModuleName, FResolveModuleIdFn InResolve, FLoadSourceByModuleIdFn InLoadSource)
+	TExpected<void> FV8Loader::LoadJsModule(const std::string_view ModuleName, FResolveModuleIdFn InResolve, FLoadSourceByModuleIdFn InLoadSource)
 	{
 		if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
 		{
-			UEJS_LOG(LogJs, Error, TEXT("V8 is not initialized. Cannot load JS module."));
-			return;
+			// UEJS_LOG(LogJs, Error, TEXT("V8 is not initialized. Cannot load JS module."));
+			return Err(FError(TEXT("V8 not initialized")));
 		}
 		v8::Isolate *isolate = V8Isolate.get();
 		v8::Isolate::Scope isolate_scope(isolate);
@@ -235,6 +235,7 @@ namespace rinrin::uejs
 				}
 			}
 		}
+		return TExpected<void>();
 	}
 
 } // namespace rinrin::uejs

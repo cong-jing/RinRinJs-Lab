@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ModuleResolver.h"
+#include "Common/Expected.h"
 #include <string>
 
 class RINRINJS_API FRinRinJsModule : public IModuleInterface
@@ -16,7 +17,7 @@ public:
 	void StartRuntime();
 	void StopRuntime();
 
-	void LoadJsModule(const std::string_view ModuleName,
-					  rinrin::uejs::FResolveModuleIdFn InResolve,
-					  rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource);
+	rinrin::uejs::TExpected<void> LoadJsModule(const std::string_view ModuleName,
+											   rinrin::uejs::FResolveModuleIdFn InResolve,
+											   rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource);
 };

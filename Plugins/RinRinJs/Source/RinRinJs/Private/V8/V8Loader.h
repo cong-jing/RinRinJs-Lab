@@ -50,9 +50,9 @@ namespace rinrin::uejs
 		/** Execute JavaScript code and return the result as a UTF-8 string */
 		std::string ExecuteJavaScript(std::string_view ScriptUtf8);
 
-		void LoadJsModule(const std::string_view ModuleName,
-						  FResolveModuleIdFn InResolve,
-						  FLoadSourceByModuleIdFn InLoadSource);
+		TExpected<void> LoadJsModule(const std::string_view ModuleName,
+									 FResolveModuleIdFn InResolve,
+									 FLoadSourceByModuleIdFn InLoadSource);
 
 	private:
 		FV8Loader();

@@ -10,13 +10,13 @@ DECLARE_LOG_CATEGORY_EXTERN(LogJs, Log, All);
 // 基础日志宏：带文件名和行号
 // --------------------
 
-// 用法：UEJS_LOG(LogJs, Warning, "Something happened: %d", value);
+// 用法：UEJS_LOG(LogJs, Warning, TEXT("Something happened: %d"), value);
 // 输出示例：LogJs: Warning: [FileName.cpp:init 123] Something happened: 42
 #define UEJS_LOG(Category, Verbosity, Fmt, ...) \
-    UE_LOG(Category, Verbosity, TEXT("[%s:%s %d] " Fmt), ANSI_TO_TCHAR(__FILE__), ANSI_TO_TCHAR(__FUNCTION__), __LINE__, ##__VA_ARGS__)
+    UE_LOG(Category, Verbosity, TEXT("[%s:%s %d] ") Fmt, ANSI_TO_TCHAR(__FILE__), ANSI_TO_TCHAR(__FUNCTION__), __LINE__, ##__VA_ARGS__)
 
 #define UEJS_RETURN_ERROR(Fmt, ...) \
-    return ::rinrin::uejs::Err(::rinrin::uejs::FError(FString::Printf(TEXT(Fmt), ##__VA_ARGS__), UEJS_HERE));
+    return ::rinrin::uejs::Err(::rinrin::uejs::FError(FString::Printf(Fmt, ##__VA_ARGS__), UEJS_HERE));
 
 #define UEJS_ENSURE_NOT_ERROR(Expected)     \
     do                                      \
@@ -42,7 +42,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogJs, Log, All);
         else                                                                                                        \
         {                                                                                                           \
             /* 每次都构造错误对象并返回（控制流一致） */                                                            \
-            ::rinrin::uejs::FError _UejsErr(FString::Printf(TEXT(Fmt), ##__VA_ARGS__), UEJS_HERE);                  \
+            ::rinrin::uejs::FError _UejsErr(FString::Printf(Fmt, ##__VA_ARGS__), UEJS_HERE);                        \
             /* 仅第一次才生成漂亮字符串并触发 ensure（避免 Tick 中重复开销） */                                     \
             static bool _UejsEnsuredOnce = false;                                                                   \
             if (!_UejsEnsuredOnce)                                                                                  \
@@ -66,7 +66,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogJs, Log, All);
 #define UEJS_LOG_ONCE_AND_RETURN_ERR(Category, Fmt, ...)                                                       \
     do                                                                                                         \
     {                                                                                                          \
-        ::rinrin::uejs::FError _UejsErr(FString::Printf(TEXT(Fmt), ##__VA_ARGS__), UEJS_HERE);                 \
+        ::rinrin::uejs::FError _UejsErr(FString::Printf(Fmt, ##__VA_ARGS__), UEJS_HERE);                       \
         static bool _UejsLoggedOnce = false;                                                                   \
         if (!_UejsLoggedOnce)                                                                                  \
         {                                                                                                      \
@@ -80,7 +80,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogJs, Log, All);
 #define UEJS_LOG_ONCE_V_AND_RETURN_ERR(Category, Verbosity, Fmt, ...)                                 \
     do                                                                                                \
     {                                                                                                 \
-        ::rinrin::uejs::FError _UejsErr(FString::Printf(TEXT(Fmt), ##__VA_ARGS__), UEJS_HERE);        \
+        ::rinrin::uejs::FError _UejsErr(FString::Printf(Fmt, ##__VA_ARGS__), UEJS_HERE);              \
         static bool _UejsLoggedOnce = false;                                                          \
         if (!_UejsLoggedOnce)                                                                         \
         {                                                                                             \

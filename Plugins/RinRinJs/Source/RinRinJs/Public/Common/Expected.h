@@ -19,7 +19,7 @@ namespace rinrin::uejs
     }
 
     template <class T>
-    class TExpected
+    class [[nodiscard]] TExpected
     {
     public:
         // Values can be implicitly constructed
@@ -55,6 +55,13 @@ namespace rinrin::uejs
             return V.template Get<FError>();
         }
 
+        // Move-out error (rvalue-only) for zero-copy propagation
+        FError TakeError() &&
+        {
+            check(HasError());
+            return MoveTemp(V.template Get<FError>());
+        }
+
         T &operator*() { return Value(); }
         const T &operator*() const { return Value(); }
 
@@ -64,7 +71,7 @@ namespace rinrin::uejs
 
     // Specialization for void
     template <>
-    class TExpected<void>
+    class [[nodiscard]] TExpected<void>
     {
     public:
         // Default constructor for success
@@ -91,6 +98,13 @@ namespace rinrin::uejs
         {
             check(HasError());
             return ErrorValue;
+        }
+
+        // Move-out error (rvalue-only) for zero-copy propagation
+        FError TakeError() &&
+        {
+            check(HasError());
+            return MoveTemp(ErrorValue);
         }
 
     private:

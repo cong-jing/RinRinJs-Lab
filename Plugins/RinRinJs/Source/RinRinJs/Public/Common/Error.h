@@ -27,12 +27,32 @@ namespace rinrin::uejs
 		int32 Line = 0;
 		const ANSICHAR *Function = nullptr;
 
+		FSourceLocation() = default;
+		FSourceLocation(const ANSICHAR *InFile, int32 InLine, const ANSICHAR *InFunction)
+			: File(InFile), Line(InLine), Function(InFunction) {}
+
 		FString ToString() const;
 		bool IsValid() const { return File != nullptr && Line > 0; }
 	};
 
 #define UEJS_HERE \
-	::rinrin::uejs::FSourceLocation { __FILE__, __LINE__, __FUNCTION__ }
+	::rinrin::uejs::FSourceLocation(__FILE__, __LINE__, __FUNCTION__)
+
+	// Context frame for logical error propagation (without re-capturing stack trace)
+	struct FErrorContextFrame
+	{
+		FString What;		   // Semantic description (e.g., "While resolving module X")
+		FSourceLocation Where; // Optional: location where context was added
+
+		FString ToString() const
+		{
+			if (!Where.IsValid())
+			{
+				return What;
+			}
+			return FString::Printf(TEXT("%s @ %s"), *What, *Where.ToString());
+		}
+	};
 
 	struct FJsStackInfo
 	{
@@ -59,24 +79,21 @@ namespace rinrin::uejs
 	public:
 		FError() = default;
 
-		explicit FError(FString InMessage, FSourceLocation InLocation = {})
+		explicit FError(FString InMessage, FSourceLocation InLocation = {}, bool bCaptureNow = false)
 			: Message(MoveTemp(InMessage)), Location(InLocation)
 		{
 #if UEJS_ERROR_ENABLE_STACKTRACE
-			CaptureStack(/*IgnoreFrames=*/0);
+			if (bCaptureNow)
+			{
+				CaptureStack(/*IgnoreFrames=*/0);
+			}
+#else
+			(void)bCaptureNow;
 #endif
 		}
 
-		FError(FString InMessage, FJsStackInfo InJsInfo, FSourceLocation InLocation = {})
+		FError(FJsStackInfo InJsInfo, FString InMessage, FSourceLocation InLocation = {}, bool bCaptureNow = false)
 			: Message(MoveTemp(InMessage)), JsInfo(MoveTemp(InJsInfo)), Location(InLocation)
-		{
-#if UEJS_ERROR_ENABLE_STACKTRACE
-			CaptureStack(/*IgnoreFrames=*/0);
-#endif
-		}
-		// 如果你希望“只在需要时才抓堆栈”，可用这个构造并传 false
-		FError(FString InMessage, bool bCaptureNow, FSourceLocation InLocation = {})
-			: Message(MoveTemp(InMessage)), Location(InLocation)
 		{
 #if UEJS_ERROR_ENABLE_STACKTRACE
 			if (bCaptureNow)
@@ -101,6 +118,23 @@ namespace rinrin::uejs
 		bool HasNativeStack() const { return bHasStack; }
 		const FString &GetNativeStack() const { return NativeStack; }
 
+		// 逻辑上下文（用于错误传播时追加语义信息，不重复捕获堆栈）
+		// 左值版本
+		FError &WithContext(FString InWhat, FSourceLocation InWhere = {}) &
+		{
+			ContextFrames.Add({MoveTemp(InWhat), InWhere});
+			return *this;
+		}
+
+		// 右值版本（关键）
+		FError &&WithContext(FString InWhat, FSourceLocation InWhere = {}) &&
+		{
+			ContextFrames.Add({MoveTemp(InWhat), InWhere});
+			return MoveTemp(*this);
+		}
+
+		const TArray<FErrorContextFrame> &GetContextFrames() const { return ContextFrames; }
+
 		// 主动抓取堆栈（IgnoreFrames：用于跳过包装层）
 		void CaptureStack(int32 IgnoreFrames = 0);
 
@@ -117,6 +151,7 @@ namespace rinrin::uejs
 		FString Message;
 		FJsStackInfo JsInfo;
 		FSourceLocation Location;
+		TArray<FErrorContextFrame> ContextFrames;
 		bool bHasStack = false;
 		FString NativeStack;
 	};

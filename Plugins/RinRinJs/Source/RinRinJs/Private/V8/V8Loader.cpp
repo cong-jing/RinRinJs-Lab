@@ -2,6 +2,8 @@
 
 #include "V8/V8Loader.h"
 #include "V8/V8ModuleManager.h"
+#include "V8/V8Console.h"
+#include "V8/V8DevToolsServer.h"
 #include "Common/LogMacros.h"
 
 #include "CoreMinimal.h"
@@ -44,6 +46,12 @@ namespace rinrin::uejs
 
 	void FV8Loader::FinalizeV8Process()
 	{
+		// 确保先清理执行上下文（以防 DestroyExecutionContext 没被调用）
+		if (bIsInitialized)
+		{
+			DestroyExecutionContext();
+		}
+
 		v8::V8::Dispose();
 		v8::V8::DisposePlatform();
 		V8Platform.reset();
@@ -72,7 +80,8 @@ namespace rinrin::uejs
 		create_params.array_buffer_allocator = ArrayBufferAllocator.get();
 
 		UEJS_LOG(LogJs, Log, TEXT("Initializing V8 engine...  5555"));
-		V8Isolate.reset(v8::Isolate::New(create_params));
+		v8::Isolate *isolate = v8::Isolate::New(create_params);
+		V8Isolate.reset(isolate);
 
 		if (!V8Isolate)
 		{
@@ -82,12 +91,24 @@ namespace rinrin::uejs
 		}
 
 		// Step 4: Create a Global context handle
-		{
-			v8::Isolate::Scope isolate_scope(V8Isolate.get());
-			v8::HandleScope handle_scope(V8Isolate.get());
+		v8::Isolate::Scope isolate_scope(isolate);
+		v8::HandleScope handle_scope(isolate);
 
-			v8::Local<v8::Context> ctx = v8::Context::New(V8Isolate.get());
-			V8ContextGlobal.Reset(V8Isolate.get(), ctx);
+		v8::Local<v8::Context> ctx = v8::Context::New(isolate);
+		V8ContextGlobal.Reset(isolate, ctx);
+
+		FV8Console::InjectConsole(isolate, ctx);
+
+		// 启动 DevTools Server
+		DevToolsServer = std::make_unique<FV8DevToolsServer>();
+		auto StartResult = DevToolsServer->Start(9229);
+		if (!StartResult)
+		{
+			StartResult.Error().Log(LogJs, ELogVerbosity::Error);
+		}
+		else if (DevToolsServer->IsRunning())
+		{
+			UEJS_LOG(LogJs, Log, TEXT("V8 DevTools Server is running. Connect via: chrome://inspect or devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229"));
 		}
 
 		bIsInitialized = true;
@@ -96,6 +117,13 @@ namespace rinrin::uejs
 
 	void FV8Loader::DestroyExecutionContext()
 	{
+		// 停止 DevTools Server
+		if (DevToolsServer)
+		{
+			DevToolsServer->Stop();
+			DevToolsServer.reset();
+		}
+
 		JsModuleManager.reset();
 		V8ContextGlobal.Reset();
 		ArrayBufferAllocator.reset();
@@ -195,43 +223,44 @@ namespace rinrin::uejs
 		}
 
 		UEJS_LOG(LogJs, Log, TEXT("Loading JS module: %s"), *FString(ModuleName.data()));
-		JsModuleManager->LoadModule(ModuleName, InResolve, InLoadSource);
+		UEJS_RETURN_IF_ERROR(TEXT("Loading JS module"), JsModuleManager->LoadModule(ModuleName, InResolve, InLoadSource));
 
-		{
-			v8::Local<v8::Value> outResult;
-			JsModuleManager->ExcuteFunction(ModuleName, "hello", std::span<v8::Local<v8::Value>>(), outResult);
-
-			if (!outResult.IsEmpty())
-			{
-				v8::Local<v8::String> s;
-				if (outResult->ToString(ctx).ToLocal(&s))
-				{
-					v8::String::Utf8Value Utf8(isolate, s);
-					const char *cstr = *Utf8 ? *Utf8 : "";
-					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return=%s"), *FString(UTF8_TO_TCHAR(cstr)));
-				}
-				else
-				{
-					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return (non-string)."));
-				}
-			}
-		}
 		{
 			v8::Local<v8::Value> args[] = {
 				v8::Integer::New(isolate, 10),
 				v8::Integer::New(isolate, 20)};
 			v8::Local<v8::Value> outResult;
-			JsModuleManager->ExcuteFunction(ModuleName, "add", std::span(args), outResult);
+			UEJS_RETURN_IF_ERROR(TEXT("Executing function foo"),
+								 JsModuleManager->ExecuteFunction(ModuleName, "foo", std::span(args), outResult));
 			if (!outResult.IsEmpty())
 			{
 				v8::Local<v8::Number> s;
 				if (outResult->ToNumber(ctx).ToLocal(&s))
 				{
-					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return=%lf"), s->Value());
+					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction foo: Call success. Return=%lf"), s->Value());
 				}
 				else
 				{
-					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction: Call success. Return (non-number)."));
+					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction foo: Call success. Return (non-number)."));
+				}
+			}
+		}
+		{
+			v8::Local<v8::Value> args[] = {
+				v8::Integer::New(isolate, 20)};
+			v8::Local<v8::Value> outResult;
+			UEJS_RETURN_IF_ERROR(TEXT("Executing function bar"),
+								 JsModuleManager->ExecuteFunction(ModuleName, "bar", std::span(args), outResult));
+			if (!outResult.IsEmpty())
+			{
+				v8::Local<v8::Number> s;
+				if (outResult->ToNumber(ctx).ToLocal(&s))
+				{
+					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction bar: Call success. Return=%lf"), s->Value());
+				}
+				else
+				{
+					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction bar: Call success. Return (non-number)."));
 				}
 			}
 		}

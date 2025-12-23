@@ -22,6 +22,7 @@ namespace rinrin::uejs
 {
 
 	class FV8ModuleManager;
+	class FV8DevToolsServer;
 
 	class FV8Loader
 	{
@@ -88,6 +89,9 @@ namespace rinrin::uejs
 			}
 		};
 		std::unique_ptr<FV8ModuleManager, FV8ModuleManagerDeleter> JsModuleManager;
+
+		/** DevTools Server for debugging */
+		std::unique_ptr<FV8DevToolsServer> DevToolsServer;
 
 		/** Flag to track if V8 is initialized */
 		bool bIsInitialized;

@@ -81,6 +81,6 @@ Plugins/**/Intermediate
 Plugins/VisualStudioTools/
 
 # Allow third-party library files (will be handled by Git LFS)
-!Plugins/JsRuntime/ThirdParty/ChakraCore/lib/Win64/Release/ChakraCore.lib
-!Plugins/JsRuntime/ThirdParty/ChakraCore/bin/Win64/Release/ChakraCore.dll
-!Plugins/JsRuntime/ThirdParty/v8/lib/Win64/Release/v8_monolith.lib
+!Plugins/RinRinJs/ThirdParty/ChakraCore/lib/Win64/Release/ChakraCore.lib
+!Plugins/RinRinJs/ThirdParty/ChakraCore/bin/Win64/Release/ChakraCore.dll
+!Plugins/RinRinJs/ThirdParty/v8/lib/Win64/Release/v8_monolith.lib

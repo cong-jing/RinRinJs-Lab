@@ -17,6 +17,7 @@ public class RinRinJs : ModuleRules
                 "Core",
                 "CoreUObject",
                 "Projects",
+                "WebSocketNetworking",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] { });

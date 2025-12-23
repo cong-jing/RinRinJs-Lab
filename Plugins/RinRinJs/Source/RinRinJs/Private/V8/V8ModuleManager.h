@@ -34,10 +34,10 @@ namespace rinrin::uejs
             rinrin::uejs::FResolveModuleIdFn InResolve,
             rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource);
 
-        TExpected<void> ExcuteFunction(std::string_view ModuleId,
-                                       std::string_view FunctionName,
-                                       std::span<v8::Local<v8::Value>> Args,
-                                       v8::Local<v8::Value> &OutResult);
+        TExpected<void> ExecuteFunction(std::string_view ModuleId,
+                                        std::string_view FunctionName,
+                                        std::span<v8::Local<v8::Value>> Args,
+                                        v8::Local<v8::Value> &OutResult);
 
         void UnloadAll();
 

@@ -22,7 +22,6 @@ void FRinRinJsModule::StartupModule()
 }
 void FRinRinJsModule::ShutdownModule()
 {
-	StopRuntime();
 #if RinRinJs_USE_V8
 	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.FinalizeV8Process();

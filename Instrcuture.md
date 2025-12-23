@@ -18,8 +18,8 @@
 
 ## 2. 插件架构与生命周期（已明确并搭建骨架）
 
-- 插件以 UE Plugin机制组织，入口是 RinRinGame\Plugins\JsRuntime\Source\JsRuntime\Public\JsRuntime
-  - 作为测试，目前从RinRinGameInstance的`Init/Shutdown` 启动插件模块（`FJsRuntimeModule`）
+- 插件以 UE Plugin机制组织，入口是 RinRinGame\Plugins\RinRinJs\Source\RinRinJs\Public\RinRinJs
+  - 作为测试，目前从RinRinGameInstance的`Init/Shutdown` 启动插件模块（`FRinRinJsModule`）
   - Editor 启动时模块会提前启动；
 - 插件内部存在“运行时管理层”的概念（Runtime Manager / Runtime API 边界层）：
   - 负责 JS 引擎初始化/停止；
@@ -44,7 +44,7 @@
     - 创建Isolate和Context
     - 直接执行脚本（Evaluate）
     - 读取esm模块，并解决模块依赖
-  - 当前编译为静态库，lib和include文件放置于RinRinGame\Plugins\JsRuntime\ThirdParty\v8，编译时args.gn如下
+  - 当前编译为静态库，lib和include文件放置于RinRinGame\Plugins\RinRinJs\ThirdParty\v8，编译时args.gn如下
 ```
 is_component_build = false
 is_debug = false

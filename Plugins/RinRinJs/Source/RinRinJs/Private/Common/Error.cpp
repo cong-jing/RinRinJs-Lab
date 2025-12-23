@@ -123,7 +123,7 @@ namespace rinrin::uejs
 #endif
     }
 
-    FString FError::ToPrettyString(bool bIncludeV8, bool bIncludeNativeStack) const
+    FString FError::ToPrettyString(bool bIncludeJsStack, bool bIncludeNativeStack) const
     {
         TStringBuilder<4096> B;
 
@@ -137,7 +137,21 @@ namespace rinrin::uejs
             B.Append(TEXT("\n"));
         }
 
-        if (bIncludeV8 && JsInfo.IsSet())
+        // Context frames (logical propagation path)
+        if (ContextFrames.Num() > 0)
+        {
+            B.Append(TEXT("Context:\n"));
+            for (int32 i = 0; i < ContextFrames.Num(); ++i)
+            {
+                B.Append(TEXT("  "));
+                B.Append(FString::FromInt(i + 1));
+                B.Append(TEXT(") "));
+                B.Append(ContextFrames[i].ToString());
+                B.Append(TEXT("\n"));
+            }
+        }
+
+        if (bIncludeJsStack && JsInfo.IsSet())
         {
             B.Append(TEXT("JavaScript:\n"));
 
@@ -207,10 +221,10 @@ namespace rinrin::uejs
 
     void FError::Log(const FLogCategoryBase &Category,
                      ELogVerbosity::Type Verbosity,
-                     bool bIncludeV8,
+                     bool bIncludeJsStack,
                      bool bIncludeNativeStack) const
     {
-        const FString Text = ToPrettyString(bIncludeV8, bIncludeNativeStack);
+        const FString Text = ToPrettyString(bIncludeJsStack, bIncludeNativeStack);
 
         // 这里不使用 UE_LOG 宏，而是用 FMsg::Logf 以支持“运行时传入 Category”
         const ANSICHAR *File = Location.File ? Location.File : __FILE__;

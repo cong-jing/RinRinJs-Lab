@@ -74,7 +74,7 @@ namespace rinrin::uejs
 		}
 	};
 
-	class FError
+	class RINRINJS_API FError
 	{
 	public:
 		FError() = default;

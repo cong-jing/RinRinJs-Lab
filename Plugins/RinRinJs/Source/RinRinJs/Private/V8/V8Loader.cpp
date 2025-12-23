@@ -3,7 +3,8 @@
 #include "V8/V8Loader.h"
 #include "V8/V8ModuleManager.h"
 #include "V8/V8Console.h"
-#include "V8/V8DevToolsServer.h"
+#include "V8/V8InspectorTransport.h"
+#include "V8/V8InspectorHost.h"
 #include "Common/LogMacros.h"
 
 #include "CoreMinimal.h"
@@ -99,17 +100,20 @@ namespace rinrin::uejs
 
 		FV8Console::InjectConsole(isolate, ctx);
 
-		// 启动 DevTools Server
-		DevToolsServer = std::make_unique<FV8DevToolsServer>();
-		auto StartResult = DevToolsServer->Start(9229);
-		if (!StartResult)
+		// 启动 Inspector Transport (WebSocket)
+		InspectorTransport = std::make_unique<FV8InspectorTransport>();
+		if (!InspectorTransport->Start(9229))
 		{
-			StartResult.Error().Log(LogJs, ELogVerbosity::Error);
+			UEJS_LOG(LogJs, Warning, TEXT("Inspector Transport failed to start, but continuing without debugging support"));
 		}
-		else if (DevToolsServer->IsRunning())
+		else
 		{
-			UEJS_LOG(LogJs, Log, TEXT("V8 DevTools Server is running. Connect via: chrome://inspect or devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229"));
+			UEJS_LOG(LogJs, Log, TEXT("V8 Inspector Transport is running. Connect via: chrome://inspect or devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229"));
 		}
+
+		// 创建 InspectorHost（必须在任何 JS 执行之前）
+		InspectorHost = std::make_unique<FV8InspectorHost>(isolate, ctx, InspectorTransport.get());
+		UEJS_LOG(LogJs, Log, TEXT("V8 Inspector Host created"));
 
 		bIsInitialized = true;
 		UEJS_LOG(LogJs, Log, TEXT("V8 engine initialized successfully"));
@@ -117,11 +121,17 @@ namespace rinrin::uejs
 
 	void FV8Loader::DestroyExecutionContext()
 	{
-		// 停止 DevTools Server
-		if (DevToolsServer)
+		// 停止 Inspector Host
+		if (InspectorHost)
 		{
-			DevToolsServer->Stop();
-			DevToolsServer.reset();
+			InspectorHost.reset();
+		}
+
+		// 停止 Inspector Transport
+		if (InspectorTransport)
+		{
+			InspectorTransport->Stop();
+			InspectorTransport.reset();
 		}
 
 		JsModuleManager.reset();
@@ -134,6 +144,15 @@ namespace rinrin::uejs
 	bool FV8Loader::IsContextCreated() const
 	{
 		return bIsInitialized && (V8Isolate.get() != nullptr);
+	}
+
+	void FV8Loader::Tick()
+	{
+		if (!bIsInitialized || !InspectorHost)
+			return;
+
+		// 驱动 Inspector：Pump WebSocket + 派发 CDP 消息
+		InspectorHost->TickOnce();
 	}
 
 	std::string FV8Loader::ExecuteJavaScript(std::string_view ScriptUtf8)

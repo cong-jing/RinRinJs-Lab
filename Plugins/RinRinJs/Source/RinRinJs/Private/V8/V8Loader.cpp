@@ -3,8 +3,8 @@
 #include "V8/V8Loader.h"
 #include "V8/V8ModuleManager.h"
 #include "V8/V8Console.h"
-#include "V8/V8InspectorTransport.h"
 #include "V8/V8InspectorHost.h"
+#include "Web/CivetWebInspectorTransport.h"
 #include "Common/LogMacros.h"
 
 #include "CoreMinimal.h"
@@ -38,7 +38,7 @@ namespace rinrin::uejs
 		v8::V8::InitializeICUDefaultLocation(nullptr);
 		v8::V8::InitializeExternalStartupData(nullptr);
 
-		V8Platform = v8::platform::NewSingleThreadedDefaultPlatform();
+		V8Platform = v8::platform::NewDefaultPlatform();
 		v8::V8::InitializePlatform(V8Platform.get());
 		v8::V8::Initialize();
 
@@ -90,6 +90,7 @@ namespace rinrin::uejs
 			FMessageDialog::Open(EAppMsgType::Ok, NSLOCTEXT("FV8Loader", "IsolateCreationError", "Failed to create V8 Isolate"));
 			return;
 		}
+		isolate->Enter();
 
 		// Step 4: Create a Global context handle
 		v8::Isolate::Scope isolate_scope(isolate);
@@ -101,8 +102,8 @@ namespace rinrin::uejs
 		FV8Console::InjectConsole(isolate, ctx);
 
 		// 启动 Inspector Transport (WebSocket)
-		InspectorTransport = std::make_unique<FV8InspectorTransport>();
-		if (!InspectorTransport->Start(9229))
+		InspectorTransport = std::make_unique<FCivetWebInspectorTransport>(FCivetWebInspectorTransport::FOptions{});
+		if (!InspectorTransport->Start())
 		{
 			UEJS_LOG(LogJs, Warning, TEXT("Inspector Transport failed to start, but continuing without debugging support"));
 		}
@@ -137,22 +138,18 @@ namespace rinrin::uejs
 		JsModuleManager.reset();
 		V8ContextGlobal.Reset();
 		ArrayBufferAllocator.reset();
-		V8Isolate.reset();
+		if (V8Isolate)
+		{
+			V8Isolate->Exit();
+			V8Isolate->Dispose();
+			V8Isolate.reset();
+		}
 		bIsInitialized = false;
 	}
 
 	bool FV8Loader::IsContextCreated() const
 	{
 		return bIsInitialized && (V8Isolate.get() != nullptr);
-	}
-
-	void FV8Loader::Tick()
-	{
-		if (!bIsInitialized || !InspectorHost)
-			return;
-
-		// 驱动 Inspector：Pump WebSocket + 派发 CDP 消息
-		InspectorHost->TickOnce();
 	}
 
 	std::string FV8Loader::ExecuteJavaScript(std::string_view ScriptUtf8)

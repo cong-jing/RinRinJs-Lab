@@ -14,10 +14,6 @@
 		{
 			"Name": "ModelingToolsEditorMode",
 			"Enabled": true
-		},
-		{
-			"Name": "WebSocketNetworking",
-			"Enabled": true
 		}
 	]
 }

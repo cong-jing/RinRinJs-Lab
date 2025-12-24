@@ -127,92 +127,143 @@ namespace rinrin::uejs
     {
         TStringBuilder<4096> B;
 
+        // 主错误消息（类似 Chrome: "Error: message"）
+        B.Append(TEXT("Error: "));
         B.Append(Message);
         B.Append(TEXT("\n"));
 
         if (Location.IsValid())
         {
-            B.Append(TEXT("Location: "));
-            B.Append(Location.ToString());
-            B.Append(TEXT("\n"));
+            // Chrome 风格: at Location (file:line:col)
+            B.Append(TEXT("    at "));
+            if (Location.Function && *Location.Function)
+            {
+                B.Append(ANSI_TO_TCHAR(Location.Function));
+                B.Append(TEXT(" "));
+            }
+            B.Append(TEXT("("));
+            B.Append(ANSI_TO_TCHAR(Location.File ? Location.File : "unknown"));
+            B.Append(TEXT(":"));
+            B.Append(FString::FromInt(Location.Line));
+            B.Append(TEXT(")\n"));
         }
 
         // Context frames (logical propagation path)
         if (ContextFrames.Num() > 0)
         {
-            B.Append(TEXT("Context:\n"));
+            B.Append(TEXT("\nContext Chain:\n"));
             for (int32 i = 0; i < ContextFrames.Num(); ++i)
             {
-                B.Append(TEXT("  "));
-                B.Append(FString::FromInt(i + 1));
-                B.Append(TEXT(") "));
-                B.Append(ContextFrames[i].ToString());
+                const auto &Frame = ContextFrames[i];
+                B.Append(TEXT("    "));
+                B.Append(Frame.What);
+                if (Frame.Where.IsValid())
+                {
+                    B.Append(TEXT(" at "));
+                    if (Frame.Where.Function && *Frame.Where.Function)
+                    {
+                        B.Append(ANSI_TO_TCHAR(Frame.Where.Function));
+                        B.Append(TEXT(" "));
+                    }
+                    B.Append(TEXT("("));
+                    B.Append(ANSI_TO_TCHAR(Frame.Where.File ? Frame.Where.File : "unknown"));
+                    B.Append(TEXT(":"));
+                    B.Append(FString::FromInt(Frame.Where.Line));
+                    B.Append(TEXT(")"));
+                }
                 B.Append(TEXT("\n"));
             }
         }
 
         if (bIncludeJsStack && JsInfo.IsSet())
         {
-            B.Append(TEXT("JavaScript:\n"));
+            B.Append(TEXT("\n--- JavaScript Stack ---\n"));
 
             if (!JsInfo.Message.IsEmpty())
             {
-                B.Append(TEXT("  Message: "));
+                B.Append(TEXT("    "));
                 B.Append(JsInfo.Message);
                 B.Append(TEXT("\n"));
             }
 
-            if (!JsInfo.ScriptName.IsEmpty())
+            if (!JsInfo.ScriptName.IsEmpty() || JsInfo.Line >= 0 || JsInfo.Column >= 0)
             {
-                B.Append(TEXT("  Script: "));
-                B.Append(JsInfo.ScriptName);
-                B.Append(TEXT("\n"));
-            }
-
-            if (JsInfo.Line >= 0 || JsInfo.Column >= 0)
-            {
-                B.Append(TEXT("  Line/Col: "));
-                B.Append(FString::Printf(TEXT("%d:%d"), JsInfo.Line, JsInfo.Column));
+                B.Append(TEXT("    at "));
+                B.Append(JsInfo.ScriptName.IsEmpty() ? TEXT("<anonymous>") : JsInfo.ScriptName);
+                if (JsInfo.Line >= 0)
+                {
+                    B.Append(TEXT(":"));
+                    B.Append(FString::FromInt(JsInfo.Line));
+                    if (JsInfo.Column >= 0)
+                    {
+                        B.Append(TEXT(":"));
+                        B.Append(FString::FromInt(JsInfo.Column));
+                    }
+                }
                 B.Append(TEXT("\n"));
             }
 
             if (!JsInfo.SourceLine.IsEmpty())
             {
-                B.Append(TEXT("  Source: "));
+                B.Append(TEXT("    Source: "));
                 B.Append(JsInfo.SourceLine);
                 B.Append(TEXT("\n"));
             }
 
             if (!JsInfo.Stack.IsEmpty())
             {
-                B.Append(TEXT("  Stack:\n"));
-                B.Append(JsInfo.Stack);
-                if (!JsInfo.Stack.EndsWith(TEXT("\n")))
+                // JS stack 通常已经格式化好了，给每行添加缩进
+                TArray<FString> Lines;
+                JsInfo.Stack.ParseIntoArrayLines(Lines, false);
+                for (const FString &Line : Lines)
                 {
-                    B.Append(TEXT("\n"));
+                    if (!Line.IsEmpty())
+                    {
+                        B.Append(TEXT("        "));
+                        B.Append(Line);
+                        B.Append(TEXT("\n"));
+                    }
                 }
             }
         }
 
         if (bIncludeNativeStack)
         {
-            B.Append(TEXT("Native Stack:\n"));
+            B.Append(TEXT("\n--- Native Stack ---\n"));
 
 #if UEJS_ERROR_ENABLE_STACKTRACE
             if (bHasStack && !NativeStack.IsEmpty())
             {
-                B.Append(NativeStack);
-                if (!NativeStack.EndsWith(TEXT("\n")))
+                // Native stack 每行添加缩进（总共 8 个空格）
+                TArray<FString> Lines;
+                NativeStack.ParseIntoArrayLines(Lines, false);
+                for (const FString &Line : Lines)
                 {
-                    B.Append(TEXT("\n"));
+                    if (!Line.IsEmpty())
+                    {
+                        // 如果行已经有缩进，保留它；否则添加我们的缩进
+                        if (Line.StartsWith(TEXT("    ")))
+                        {
+                            // 已有缩进，再加 4 个空格
+                            B.Append(TEXT("    "));
+                            B.Append(Line);
+                        }
+                        else
+                        {
+                            // 没有缩进，加 8 个空格
+                            B.Append(TEXT("        "));
+                            B.Append(Line);
+                        }
+                        B.Append(TEXT("\n"));
+                    }
                 }
             }
             else
             {
-                B.Append(TEXT("  <no stack captured>\n"));
+                B.Append(TEXT("    <no stack captured>\n"));
             }
 #else
-            B.Append(TEXT("  <stack trace disabled: UEJS_ERROR_ENABLE_STACKTRACE=0>\n"));
+            B.Append(TEXT("    <stack trace disabled: UEJS_ERROR_ENABLE_STACKTRACE=0>\n"));
 #endif
         }
 

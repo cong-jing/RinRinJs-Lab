@@ -9,20 +9,12 @@ namespace rinrin::uejs
     /**
      * Inspector Transport Interface - 定义 Inspector 传输层的抽象接口
      * 解耦 InspectorHost 和具体的传输实现（如 WebSocket）
+     * 只包含 Host 实际需要的接口，生命周期管理由外部负责
      */
     class IInspectorTransport
     {
     public:
         virtual ~IInspectorTransport() = default;
-
-        // 启动传输层
-        virtual bool Start(int32_t Port) = 0;
-
-        // 停止传输层
-        virtual void Stop() = 0;
-
-        // 检查是否运行中
-        virtual bool IsRunning() const = 0;
 
         // 单次泵送传输事件（从网络层读取数据到队列）
         virtual void PumpTransportOnce() = 0;

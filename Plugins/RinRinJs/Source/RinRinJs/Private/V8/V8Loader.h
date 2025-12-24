@@ -4,7 +4,7 @@
 #include "ModuleResolver.h"
 #include "V8/V8ModuleManager.h"
 #include "V8/V8InspectorHost.h"
-#include "V8/V8InspectorTransport.h"
+#include "Web/CivetWebInspectorTransport.h"
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -50,9 +50,6 @@ namespace rinrin::uejs
 		/** Check if V8 is loaded and initialized */
 		bool IsContextCreated() const;
 
-		/** Tick Inspector (should be called every frame) */
-		void Tick();
-
 		/** Execute JavaScript code and return the result as a UTF-8 string */
 		std::string ExecuteJavaScript(std::string_view ScriptUtf8);
 
@@ -96,7 +93,7 @@ namespace rinrin::uejs
 		std::unique_ptr<FV8ModuleManager, FV8ModuleManagerDeleter> JsModuleManager;
 
 		/** Inspector Transport (WebSocket) for debugging */
-		std::unique_ptr<FV8InspectorTransport> InspectorTransport;
+		std::unique_ptr<FCivetWebInspectorTransport> InspectorTransport;
 
 		/** Inspector Host for debugging */
 		std::unique_ptr<FV8InspectorHost> InspectorHost;

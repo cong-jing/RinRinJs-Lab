@@ -1,6 +1,6 @@
 // V8InspectorHost.cpp
 #include "V8InspectorHost.h"
-#include "IInspectorTransport.h"
+#include "Web/IInspectorTransport.h"
 #include "Common/LogMacros.h"
 #include "HAL/PlatformTime.h"
 #include "HAL/PlatformProcess.h"
@@ -30,7 +30,6 @@ namespace rinrin::uejs
 
         const auto View = Buf->string();
         std::string OutUtf8;
-
         // 兼容 8-bit / 16-bit StringView
         if (View.is8Bit())
         {
@@ -49,6 +48,7 @@ namespace rinrin::uejs
             OutUtf8.assign(*Utf8 ? *Utf8 : "", Utf8.length());
         }
 
+        UEJS_LOG(LogJs, Log, TEXT("Sending protocol message to DevTools. %s"), *FString(OutUtf8.c_str()));
         Transport->SendMessage(OutUtf8);
     }
 
@@ -116,11 +116,21 @@ namespace rinrin::uejs
             Transport->SetOnDisconnected([this]()
                                          { this->Detach(); });
         }
+
+        TickHandler = FTSTicker::GetCoreTicker().AddTicker(
+            FTickerDelegate::CreateRaw(this, &FV8InspectorHost::Tick),
+            0.016f); // 每 16ms 调用一次
     }
 
     FV8InspectorHost::~FV8InspectorHost()
     {
         UEJS_LOG(LogJs, Log, TEXT("Destroying V8 Inspector Host"));
+
+        if (TickHandler.IsValid())
+        {
+            FTSTicker::GetCoreTicker().RemoveTicker(TickHandler);
+            TickHandler.Reset();
+        }
 
         Detach();
 
@@ -187,6 +197,7 @@ namespace rinrin::uejs
             reinterpret_cast<const uint8_t *>(JsonUtf8.data()),
             JsonUtf8.size());
 
+        UEJS_LOG(LogJs, Log, TEXT("Dispatch protocol message to Inspector. %s"), *FString(JsonUtf8.data()));
         Session->dispatchProtocolMessage(View);
     }
 
@@ -199,10 +210,18 @@ namespace rinrin::uejs
         Transport->PumpTransportOnce();
 
         // 2. 再派发队列消息给 Inspector
-        Transport->DrainIncomingMessages([this](std::string &&Msg)
-                                         {
-            UEJS_LOG(LogJs, Verbose, TEXT("Dispatching CDP message to Inspector (%d bytes)"), Msg.size());
-            this->DispatchProtocolJson(Msg); });
+        Transport->DrainIncomingMessages(
+            [this](std::string &&Msg)
+            {
+                UEJS_LOG(LogJs, Verbose, TEXT("Dispatching CDP message to Inspector (%d bytes)"), Msg.size());
+                this->DispatchProtocolJson(Msg);
+            });
+    }
+
+    bool FV8InspectorHost::Tick(float DeltaTime)
+    {
+        TickOnce();
+        return true;
     }
 
 } // namespace rinrin::uejs

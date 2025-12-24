@@ -2,7 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IInspectorTransport.h"
+#include "Web/IInspectorTransport.h"
 #include <memory>
 #include <atomic>
 #include <string>
@@ -32,11 +32,13 @@ namespace rinrin::uejs
 
         ~FV8InspectorHost();
 
-        void TickOnce(); // 每帧调用（主线程）
-        void Attach();   // DevTools WS connected
-        void Detach();   // DevTools disconnected
+        bool Tick(float DeltaTime); // 每帧调用（主线程）
+        void TickOnce();            // 在暂停的消息循环中调用
+        void Attach();              // DevTools WS connected
+        void Detach();              // DevTools disconnected
 
     private:
+        FTSTicker::FDelegateHandle TickHandler;
         // --- Inspector glue types ---
 
         /**

@@ -38,14 +38,14 @@ void URinRinGameInstance::Init()
 "function foo(a, b) {"
 "    return a + b;"
 "}"
-
+"globalThis.foo = foo;"
 "export { foo, bar };";
 				return true;
 			}
 			else if (ResolvedModuleId == "./utils.js")
 			{
 				OutSourceUtf8 = 
-					"export function bar(x) {    return x * 2; ";
+					"export function bar(x) {    return x * 2;} ";
 				return true;
 			}
 			else

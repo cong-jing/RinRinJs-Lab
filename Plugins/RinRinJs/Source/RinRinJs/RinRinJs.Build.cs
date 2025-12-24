@@ -17,9 +17,16 @@ public class RinRinJs : ModuleRules
                 "Core",
                 "CoreUObject",
                 "Projects",
-                "WebSocketNetworking",
         });
 
+        // For civetweb
+        PublicDefinitions.AddRange(new string[]
+        {
+            "USE_WEBSOCKET",
+            "NO_FILES",
+            "NO_CGI",
+            "NO_SSL",
+        });
         PrivateDependencyModuleNames.AddRange(new string[] { });
         DynamicallyLoadedModuleNames.AddRange(new string[] { });
 
@@ -30,6 +37,8 @@ public class RinRinJs : ModuleRules
     {
         PublicDefinitions.Add("RinRinJs_USE_V8=1");
         PrivateIncludePaths.AddRange(new string[] {
+            Path.Combine(ModuleDirectory, "Private/ThirdParty/civetweb"),
+            Path.Combine(ModuleDirectory, "Private/ThirdParty/civetweb/include"),
             Path.Combine(ModuleDirectory, "../../ThirdParty/v8/include")
         });
 
@@ -87,7 +96,7 @@ public class RinRinJs : ModuleRules
             string V8LibFile = Path.Combine(V8LibPath, "v8_monolith.lib");
 
             PublicAdditionalLibraries.Add(V8LibFile);
-            PublicSystemLibraryPaths.Add(V8LibPath);
+            //PublicSystemLibraryPaths.Add(V8LibPath);
         }
     }
 

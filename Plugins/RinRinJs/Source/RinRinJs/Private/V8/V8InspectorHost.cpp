@@ -13,14 +13,14 @@ namespace rinrin::uejs
     {
     }
 
-    static v8InspectorStringBufferToUtf8(v8_inspector::StringBuffer *Buf)
+    static std::string v8InspectorStringBufferToUtf8(v8::Isolate *Isolate, v8_inspector::StringBuffer *Buf)
     {
         const auto View = Buf->string();
-        std::string OutUtf8;
+        std::string outUtf8;
         // 兼容 8-bit / 16-bit StringView
         if (View.is8Bit())
         {
-            OutUtf8.assign(reinterpret_cast<const char *>(View.characters8()), View.length());
+            outUtf8.assign(reinterpret_cast<const char *>(View.characters8()), View.length());
         }
         else
         {
@@ -32,26 +32,26 @@ namespace rinrin::uejs
                                                   static_cast<int>(View.length()))
                            .ToLocalChecked();
             v8::String::Utf8Value Utf8(Isolate, Str);
-            OutUtf8.assign(*Utf8 ? *Utf8 : "", Utf8.length());
+            outUtf8.assign(*Utf8 ? *Utf8 : "", Utf8.length());
         }
-        return;
+        return outUtf8;
     }
     void FV8InspectorHost::FChannel::sendResponse(int callId, std::unique_ptr<v8_inspector::StringBuffer> message)
     {
         // Send(message.get());
-        std::string outUtf8 = v8InspectorStringBufferToUtf8(message.get());
+        std::string outUtf8 = v8InspectorStringBufferToUtf8(Isolate, message.get());
 
-        UEJS_LOG(LogJs, Log, TEXT("Sending protocol message to DevTools. id %d : %s"), callId, *FString(OutUtf8.c_str()));
-        Transport->SendMessage(OutUtf8);
+        UEJS_LOG(LogJs, Log, TEXT("Sending protocol message to DevTools. id %d : %s"), callId, *FString(outUtf8.c_str()));
+        Transport->SendMessage(outUtf8);
     }
 
     void FV8InspectorHost::FChannel::sendNotification(std::unique_ptr<v8_inspector::StringBuffer> message)
     {
         // Send(message.get());
-        std::string outUtf8 = v8InspectorStringBufferToUtf8(message.get());
+        std::string outUtf8 = v8InspectorStringBufferToUtf8(Isolate, message.get());
 
-        UEJS_LOG(LogJs, Log, TEXT("Sending protocol message to DevTools. %s"), *FString(OutUtf8.c_str()));
-        Transport->SendMessage(OutUtf8);
+        UEJS_LOG(LogJs, Log, TEXT("Sending protocol message to DevTools. %s"), *FString(outUtf8.c_str()));
+        Transport->SendMessage(outUtf8);
     }
     void FV8InspectorHost::FChannel::Send(v8_inspector::StringBuffer *Buf)
     {

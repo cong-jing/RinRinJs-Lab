@@ -12,6 +12,7 @@
 #pragma warning(disable : 4668)
 #endif
 #include "v8.h"
+#include "libplatform/libplatform.h"
 #include "v8-inspector.h"
 #if defined(_MSC_VER)
 #pragma warning(pop)

@@ -26,7 +26,7 @@ namespace rinrin::uejs
     class FV8InspectorHost
     {
     public:
-        FV8InspectorHost(v8::Isolate *InIsolate,
+        FV8InspectorHost(v8::Platform *Platform, v8::Isolate *InIsolate,
                          v8::Local<v8::Context> InContext,
                          IInspectorTransport *InTransport);
 
@@ -85,6 +85,7 @@ namespace rinrin::uejs
     private:
         static constexpr int32 ContextGroupId = 1;
 
+        v8::Platform *Platform{};
         v8::Isolate *Isolate{};
         v8::Global<v8::Context> DefaultContext;
 

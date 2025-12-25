@@ -113,7 +113,7 @@ namespace rinrin::uejs
 		}
 
 		// 创建 InspectorHost（必须在任何 JS 执行之前）
-		InspectorHost = std::make_unique<FV8InspectorHost>(isolate, ctx, InspectorTransport.get());
+		InspectorHost = std::make_unique<FV8InspectorHost>(V8Platform.get(), isolate, ctx, InspectorTransport.get());
 		UEJS_LOG(LogJs, Log, TEXT("V8 Inspector Host created"));
 
 		bIsInitialized = true;

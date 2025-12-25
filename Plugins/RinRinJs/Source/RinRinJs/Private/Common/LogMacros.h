@@ -13,7 +13,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogJs, Log, All);
 // 用法：UEJS_LOG(LogJs, Warning, TEXT("Something happened: %d"), value);
 // 输出示例：LogJs: Warning: [FileName.cpp:init 123] Something happened: 42
 #define UEJS_LOG(Category, Verbosity, Fmt, ...) \
-    UE_LOG(Category, Verbosity, TEXT("[%s L%d: %s] ") Fmt, ANSI_TO_TCHAR(__FILE__), __LINE__, ANSI_TO_TCHAR(__FUNCTION__), ##__VA_ARGS__)
+    UE_LOG(Category, Verbosity, TEXT("[%s line: %d. ] ") Fmt, ANSI_TO_TCHAR(__FILE__), __LINE__, ##__VA_ARGS__)
 
 #define UEJS_MAKE_ERROR(Fmt, ...) \
     ::rinrin::uejs::Err(::rinrin::uejs::FError(FString::Printf(Fmt, ##__VA_ARGS__), UEJS_HERE))

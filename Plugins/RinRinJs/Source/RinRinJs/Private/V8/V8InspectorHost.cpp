@@ -13,16 +13,46 @@ namespace rinrin::uejs
     {
     }
 
+    static v8InspectorStringBufferToUtf8(v8_inspector::StringBuffer *Buf)
+    {
+        const auto View = Buf->string();
+        std::string OutUtf8;
+        // 兼容 8-bit / 16-bit StringView
+        if (View.is8Bit())
+        {
+            OutUtf8.assign(reinterpret_cast<const char *>(View.characters8()), View.length());
+        }
+        else
+        {
+            // 16-bit 转 UTF-8
+            v8::HandleScope hs(Isolate);
+            auto Str = v8::String::NewFromTwoByte(Isolate,
+                                                  View.characters16(),
+                                                  v8::NewStringType::kNormal,
+                                                  static_cast<int>(View.length()))
+                           .ToLocalChecked();
+            v8::String::Utf8Value Utf8(Isolate, Str);
+            OutUtf8.assign(*Utf8 ? *Utf8 : "", Utf8.length());
+        }
+        return;
+    }
     void FV8InspectorHost::FChannel::sendResponse(int callId, std::unique_ptr<v8_inspector::StringBuffer> message)
     {
-        Send(message.get());
+        // Send(message.get());
+        std::string outUtf8 = v8InspectorStringBufferToUtf8(message.get());
+
+        UEJS_LOG(LogJs, Log, TEXT("Sending protocol message to DevTools. id %d : %s"), callId, *FString(OutUtf8.c_str()));
+        Transport->SendMessage(OutUtf8);
     }
 
     void FV8InspectorHost::FChannel::sendNotification(std::unique_ptr<v8_inspector::StringBuffer> message)
     {
-        Send(message.get());
-    }
+        // Send(message.get());
+        std::string outUtf8 = v8InspectorStringBufferToUtf8(message.get());
 
+        UEJS_LOG(LogJs, Log, TEXT("Sending protocol message to DevTools. %s"), *FString(OutUtf8.c_str()));
+        Transport->SendMessage(OutUtf8);
+    }
     void FV8InspectorHost::FChannel::Send(v8_inspector::StringBuffer *Buf)
     {
         if (!Transport || !Buf)
@@ -84,10 +114,10 @@ namespace rinrin::uejs
     }
 
     // ---------- FV8InspectorHost ----------
-    FV8InspectorHost::FV8InspectorHost(v8::Isolate *InIsolate,
+    FV8InspectorHost::FV8InspectorHost(v8::Platform *Platform, v8::Isolate *InIsolate,
                                        v8::Local<v8::Context> InContext,
                                        IInspectorTransport *InTransport)
-        : Isolate(InIsolate), Transport(InTransport)
+        : Platform(Platform), Isolate(InIsolate), Transport(InTransport)
     {
         DefaultContext.Reset(Isolate, InContext);
 
@@ -216,6 +246,16 @@ namespace rinrin::uejs
                 UEJS_LOG(LogJs, Verbose, TEXT("Dispatching CDP message to Inspector (%d bytes)"), Msg.size());
                 this->DispatchProtocolJson(Msg);
             });
+
+        // 关键：泵 V8 前台任务 + microtasks，避免 response 卡在 task queue 里
+        if (Platform && Isolate)
+        {
+            while (v8::platform::PumpMessageLoop(Platform, Isolate))
+            {
+                // keep pumping until empty
+            }
+            Isolate->PerformMicrotaskCheckpoint();
+        }
     }
 
     bool FV8InspectorHost::Tick(float DeltaTime)

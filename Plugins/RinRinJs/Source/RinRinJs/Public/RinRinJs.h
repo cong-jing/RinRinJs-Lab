@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ModuleResolver.h"
-#include "Common/Expected.h"
+#include "Util/Expected.h"
 #include <string>
 
 class RINRINJS_API FRinRinJsModule : public IModuleInterface

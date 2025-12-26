@@ -1,7 +1,7 @@
 // V8InspectorHost.cpp
 #include "V8InspectorHost.h"
 #include "Web/IInspectorTransport.h"
-#include "Common/LogMacros.h"
+#include "Util/LogMacros.h"
 #include "HAL/PlatformTime.h"
 #include "HAL/PlatformProcess.h"
 
@@ -41,7 +41,7 @@ namespace rinrin::uejs
         // Send(message.get());
         std::string outUtf8 = v8InspectorStringBufferToUtf8(Isolate, message.get());
 
-        UEJS_LOG(LogJs, Log, TEXT("Sending protocol message to DevTools. id %d : %s"), callId, *FString(outUtf8.c_str()));
+        UEJS_LOG(LogJs, Log, "Sending protocol message to DevTools. id {} : {}", callId, outUtf8);
         Transport->SendMessage(outUtf8);
     }
 
@@ -50,7 +50,7 @@ namespace rinrin::uejs
         // Send(message.get());
         std::string outUtf8 = v8InspectorStringBufferToUtf8(Isolate, message.get());
 
-        UEJS_LOG(LogJs, Log, TEXT("Sending protocol message to DevTools. %s"), *FString(outUtf8.c_str()));
+        UEJS_LOG(LogJs, Log, "Sending protocol message to DevTools. {}", outUtf8);
         Transport->SendMessage(outUtf8);
     }
     void FV8InspectorHost::FChannel::Send(v8_inspector::StringBuffer *Buf)
@@ -78,7 +78,7 @@ namespace rinrin::uejs
             OutUtf8.assign(*Utf8 ? *Utf8 : "", Utf8.length());
         }
 
-        UEJS_LOG(LogJs, Log, TEXT("Sending protocol message to DevTools. %s"), *FString(OutUtf8.c_str()));
+        UEJS_LOG(LogJs, Log, "Sending protocol message to DevTools. {}", OutUtf8);
         Transport->SendMessage(OutUtf8);
     }
 
@@ -90,7 +90,7 @@ namespace rinrin::uejs
 
     void FV8InspectorHost::FClient::runMessageLoopOnPause(int contextGroupId)
     {
-        UEJS_LOG(LogJs, Log, TEXT("Inspector paused - entering message loop"));
+        UEJS_LOG(LogJs, Log, "Inspector paused - entering message loop");
 
         bPausedLoop.store(true);
         while (bPausedLoop.load())
@@ -100,7 +100,7 @@ namespace rinrin::uejs
             FPlatformProcess::SleepNoStats(0.001f);
         }
 
-        UEJS_LOG(LogJs, Log, TEXT("Inspector resumed - exiting message loop"));
+        UEJS_LOG(LogJs, Log, "Inspector resumed - exiting message loop");
     }
 
     void FV8InspectorHost::FClient::quitMessageLoopOnPause()
@@ -136,7 +136,7 @@ namespace rinrin::uejs
             v8_inspector::StringView(reinterpret_cast<const uint8_t *>(CtxName), strlen(CtxName)));
         Inspector->contextCreated(Info);
 
-        UEJS_LOG(LogJs, Log, TEXT("V8 Inspector created for context '%s'"), UTF8_TO_TCHAR(CtxName));
+        UEJS_LOG(LogJs, Log, "V8 Inspector created for context '{}'", CtxName);
 
         // 把 transport 的 connected/disconnected 回调绑过来
         if (Transport)
@@ -154,7 +154,7 @@ namespace rinrin::uejs
 
     FV8InspectorHost::~FV8InspectorHost()
     {
-        UEJS_LOG(LogJs, Log, TEXT("Destroying V8 Inspector Host"));
+        UEJS_LOG(LogJs, Log, "Destroying V8 Inspector Host");
 
         if (TickHandler.IsValid())
         {
@@ -180,11 +180,11 @@ namespace rinrin::uejs
     {
         if (!Inspector || Session)
         {
-            UEJS_LOG(LogJs, Warning, TEXT("Inspector already attached or not initialized"));
+            UEJS_LOG(LogJs, Warning, "Inspector already attached or not initialized");
             return;
         }
 
-        UEJS_LOG(LogJs, Log, TEXT("Attaching Inspector session"));
+        UEJS_LOG(LogJs, Log, "Attaching Inspector session");
 
         // 创建 Inspector Session
         // V8 Inspector::connect 参数：contextGroupId, Channel, state, clientTrustLevel, pauseState
@@ -198,11 +198,11 @@ namespace rinrin::uejs
 
         if (Session)
         {
-            UEJS_LOG(LogJs, Log, TEXT("Inspector session attached successfully"));
+            UEJS_LOG(LogJs, Log, "Inspector session attached successfully");
         }
         else
         {
-            UEJS_LOG(LogJs, Error, TEXT("Failed to attach Inspector session"));
+            UEJS_LOG(LogJs, Error, "Failed to attach Inspector session");
         }
     }
 
@@ -210,7 +210,7 @@ namespace rinrin::uejs
     {
         if (Session)
         {
-            UEJS_LOG(LogJs, Log, TEXT("Detaching Inspector session"));
+            UEJS_LOG(LogJs, Log, "Detaching Inspector session");
             Session.reset();
         }
     }
@@ -219,7 +219,7 @@ namespace rinrin::uejs
     {
         if (!Session)
         {
-            UEJS_LOG(LogJs, Verbose, TEXT("No Inspector session, ignoring protocol message"));
+            UEJS_LOG(LogJs, Verbose, "No Inspector session, ignoring protocol message");
             return;
         }
 
@@ -227,7 +227,7 @@ namespace rinrin::uejs
             reinterpret_cast<const uint8_t *>(JsonUtf8.data()),
             JsonUtf8.size());
 
-        UEJS_LOG(LogJs, Log, TEXT("Dispatch protocol message to Inspector. %s"), *FString(JsonUtf8.data()));
+        UEJS_LOG(LogJs, Log, "Dispatch protocol message to Inspector. {}", JsonUtf8);
         Session->dispatchProtocolMessage(View);
     }
 
@@ -243,7 +243,7 @@ namespace rinrin::uejs
         Transport->DrainIncomingMessages(
             [this](std::string &&Msg)
             {
-                UEJS_LOG(LogJs, Verbose, TEXT("Dispatching CDP message to Inspector (%d bytes)"), Msg.size());
+                UEJS_LOG(LogJs, Verbose, "Dispatching CDP message to Inspector ({} bytes)", Msg.size());
                 this->DispatchProtocolJson(Msg);
             });
 

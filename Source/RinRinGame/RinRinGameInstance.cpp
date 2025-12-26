@@ -23,6 +23,12 @@ void URinRinGameInstance::Init()
 												{
 			// Simple resolution logic: just return the request specifier as resolved ID
 			UE_LOG(LogTemp, Log, TEXT("Resolving module: %s (referrer: %s)"), *FString(RequestSpecifier.data()), *FString(ReferrerResolvedId.data()));
+			if (RequestSpecifier == "main")
+			{
+				// For relative paths, resolve to an absolute module ID
+				OutResolvedModuleId = "./main.js";
+				return true;
+			}
 			OutResolvedModuleId = std::string(RequestSpecifier);
 			return true; },
 												// Load source by module ID callback
@@ -30,22 +36,28 @@ void URinRinGameInstance::Init()
 												{
 			// Simple loading logic: for demonstration, return a hardcoded source
 			UE_LOG(LogTemp, Log, TEXT("Loading script file: %s"), *FString(ResolvedModuleId.data()));
-			if (ResolvedModuleId == "main")
+			if (ResolvedModuleId == "./main.js")
 			{
 				OutSourceUtf8 = 
-"import { bar } from './utils.js';"
+"import { bar } from './utils.js'; \n"
 
-"function foo(a, b) {"
-"    return a + b;"
-"}"
-"globalThis.foo = foo;"
-"export { foo, bar };";
+"function foo(a, b) { \n"
+"    return a + b; \n"
+"} \n"
+"globalThis.foo = foo; \n"
+"export { foo, bar }; \n";
 				return true;
 			}
 			else if (ResolvedModuleId == "./utils.js")
 			{
 				OutSourceUtf8 = 
-					"export function bar(x) {    return x * 2;} ";
+					" function bar(x) \n"
+					"{   \n"
+					" let y = x + 1;  \n"
+					"  return y * x;  \n"
+					"} \n";
+					"globalThis.bar = bar; \n"
+					"export { bar }; \n";
 				return true;
 			}
 			else

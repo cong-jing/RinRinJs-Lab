@@ -9,7 +9,7 @@ extern "C"
 #include "ThirdParty/civetweb/include/civetweb.h"
 }
 
-#include "Common/LogMacros.h"
+#include "Util/LogMacros.h"
 
 namespace rinrin::uejs
 {
@@ -32,7 +32,7 @@ namespace rinrin::uejs
         // 0) 编译期特性检查（你必须在 Build.cs 定义 USE_WEBSOCKET）
         if (!(mg_check_feature(MG_FEATURES_WEBSOCKET) & MG_FEATURES_WEBSOCKET))
         {
-            UEJS_LOG(LogJs, Error, TEXT("CivetWeb compiled without WebSocket support (USE_WEBSOCKET not set)"));
+            UEJS_LOG(LogJs, Error, "CivetWeb compiled without WebSocket support (USE_WEBSOCKET not set)");
             return false;
         }
 
@@ -75,11 +75,11 @@ namespace rinrin::uejs
         if (!Ctx)
         {
             UEJS_LOG(LogJs, Error,
-                     TEXT("mg_start2 failed. code=%u sub=%u text=%s (see %s)"),
+                     "mg_start2 failed. code={} sub={} text={} (see {})",
                      Err.code,
                      Err.code_sub,
-                     UTF8_TO_TCHAR(Err.text ? Err.text : ""),
-                     UTF8_TO_TCHAR(ErrorLogPath.c_str()));
+                     Err.text ? Err.text : "",
+                     ErrorLogPath);
 
             mg_exit_library();
             bLibraryInitialized = false;
@@ -97,8 +97,8 @@ namespace rinrin::uejs
             &FCivetWebInspectorTransport::WsCloseHandler,
             this);
 
-        UEJS_LOG(LogJs, Log, TEXT("CivetWeb Inspector WS listening on ws://127.0.0.1:%d%s"),
-                 Options.Port, *FString(Options.Uri.c_str()));
+        UEJS_LOG(LogJs, Log, "CivetWeb Inspector WS listening on ws://127.0.0.1:{}{}",
+                 Options.Port, Options.Uri);
         return true;
     }
 
@@ -194,7 +194,7 @@ namespace rinrin::uejs
 
         if (!Conn)
         {
-            UEJS_LOG(LogJs, Verbose, TEXT("No active Inspector WS connection for SendMessage"));
+            UEJS_LOG(LogJs, Verbose, "No active Inspector WS connection for SendMessage");
             return;
         }
 
@@ -209,12 +209,12 @@ namespace rinrin::uejs
 
         if (Written <= 0)
         {
-            UEJS_LOG(LogJs, Warning, TEXT("mg_websocket_write failed (written=%d)"), Written);
+            UEJS_LOG(LogJs, Warning, "mg_websocket_write failed (written={})", Written);
         }
         else
         {
-            UEJS_LOG(LogJs, Verbose, TEXT("Sent to DevTools (%d bytes): %s"),
-                     (int)JsonUtf8.size(), *FString(JsonUtf8.c_str()));
+            UEJS_LOG(LogJs, Verbose, "Sent to DevTools ({} bytes): {}",
+                     (int)JsonUtf8.size(), JsonUtf8);
         }
     }
 

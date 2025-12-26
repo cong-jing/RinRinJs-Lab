@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Logging/LogCategory.h"
 #include "Logging/LogMacros.h"
+#include <string>
 
 #ifndef UEJS_ERROR_ENABLE_STACKTRACE
 // 默认开启：与 Shipping 无关（你可在 .Build.cs PublicDefinitions 覆盖）

@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "RinRinJs.h"
-#include "Common/LogMacros.h"
+#include "Util/LogMacros.h"
 #include "Modules/ModuleManager.h"
 #if RinRinJs_USE_V8
 #include "V8/V8Loader.h"
@@ -40,14 +40,14 @@ void FRinRinJsModule::StartRuntime()
 	// Test JavaScript execution
 	if (V8Loader.IsContextCreated())
 	{
-		UEJS_LOG(LogJs, Log, TEXT("Using V8 JavaScript Engine"));
+		UEJS_LOG(LogJs, Log, "Using V8 JavaScript Engine");
 
 		// Execute the hello world script
 		FString TestScript = TEXT("'Hello from V8, ' + (1 + 2)");
 		{
 			FTCHARToUTF8 Conv(*TestScript);
 			std::string Result = V8Loader.ExecuteJavaScript(std::string_view(Conv.Get(), Conv.Length()));
-			UEJS_LOG(LogJs, Log, TEXT("JavaScript Test Result: %s"), UTF8_TO_TCHAR(Result.c_str()));
+			UEJS_LOG(LogJs, Log, "JavaScript Test Result: {}", Result);
 		}
 
 		// Execute another test script
@@ -55,12 +55,12 @@ void FRinRinJsModule::StartRuntime()
 		{
 			FTCHARToUTF8 Conv(*MathScript);
 			std::string MathResult = V8Loader.ExecuteJavaScript(std::string_view(Conv.Get(), Conv.Length()));
-			UEJS_LOG(LogJs, Log, TEXT("JavaScript Math Test Result: %s"), UTF8_TO_TCHAR(MathResult.c_str()));
+			UEJS_LOG(LogJs, Log, "JavaScript Math Test Result: {}", MathResult);
 		}
 	}
 	else
 	{
-		UEJS_LOG(LogJs, Error, TEXT("V8 is not loaded, cannot execute JavaScript"));
+		UEJS_LOG(LogJs, Error, "V8 is not loaded, cannot execute JavaScript");
 	}
 #else
 	// Initialize ChakraCore through ChakraCoreLoader module
@@ -70,24 +70,24 @@ void FRinRinJsModule::StartRuntime()
 	// Test JavaScript execution
 	if (ChakraCoreLoader.IsChakraCoreLoaded())
 	{
-		UEJS_LOG(LogJs, Log, TEXT("Using ChakraCore JavaScript Engine"));
+		UEJS_LOG(LogJs, Log, "Using ChakraCore JavaScript Engine");
 
 		// Execute the hello world script from the official example
 		FString TestScript = TEXT("(()=>{return 'Hello world!';})()");
 		FString Result = ChakraCoreLoader.ExecuteJavaScript(TestScript);
-		UEJS_LOG(LogJs, Log, TEXT("JavaScript Test Result: %s"), *Result);
+		UEJS_LOG(LogJs, Log, "JavaScript Test Result: {}", TCHAR_TO_UTF8(*Result));
 
 		// Execute another test script
 		FString MathScript = TEXT("(()=>{return 2 + 2;})()");
 		FString MathResult = ChakraCoreLoader.ExecuteJavaScript(MathScript);
-		UEJS_LOG(LogJs, Log, TEXT("JavaScript Math Test Result: %s"), *MathResult);
+		UEJS_LOG(LogJs, Log, "JavaScript Math Test Result: {}", TCHAR_TO_UTF8(*MathResult));
 	}
 	else
 	{
-		UEJS_LOG(LogJs, Error, TEXT("ChakraCore is not loaded, cannot execute JavaScript"));
+		UEJS_LOG(LogJs, Error, "ChakraCore is not loaded, cannot execute JavaScript");
 	}
 #endif
-	UEJS_LOG(LogJs, Log, TEXT("RinRinJs module started"));
+	UEJS_LOG(LogJs, Log, "RinRinJs module started");
 }
 
 void FRinRinJsModule::StopRuntime()
@@ -107,14 +107,14 @@ void FRinRinJsModule::StopRuntime()
 		ChakraCoreLoader.ShutdownChakraCore();
 	}
 #endif
-	UEJS_LOG(LogJs, Log, TEXT("RinRinJs module shutdown"));
+	UEJS_LOG(LogJs, Log, "RinRinJs module shutdown");
 }
 
 rinrin::uejs::TExpected<void> FRinRinJsModule::LoadJsModule(const std::string_view ModuleName,
 															rinrin::uejs::FResolveModuleIdFn InResolve,
 															rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource)
 {
-	UEJS_LOG(LogJs, Log, TEXT("LoadJsModule called with module name: %s"), *FString(ModuleName.data()));
+	UEJS_LOG(LogJs, Log, "LoadJsModule called with module name: {}", ModuleName);
 	FV8Loader &V8Loader = FV8Loader::Get();
 	return V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
 }

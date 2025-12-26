@@ -1,5 +1,5 @@
 #include "V8/V8Console.h"
-#include "Common/LogMacros.h"
+#include "Util/LogMacros.h"
 
 namespace rinrin::uejs
 {
@@ -18,7 +18,7 @@ namespace rinrin::uejs
 
         v8::String::Utf8Value s(isolate, args[0]);
         const char *cstr = *s ? *s : "";
-        UEJS_LOG(LogJs, Log, TEXT("v8: %hs"), cstr);
+        UEJS_LOG(LogJs, Log, "v8: {}", cstr);
 
         // TODO: 这里转到 UE：例如 UE_LOG / delegate / your bridge
         // UE_LOG(LogTemp, Log, TEXT("foo.bar: %hs"), cstr);

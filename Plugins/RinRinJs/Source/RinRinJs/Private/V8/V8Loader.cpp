@@ -5,7 +5,7 @@
 #include "V8/V8Console.h"
 #include "V8/V8InspectorHost.h"
 #include "Web/CivetWebInspectorTransport.h"
-#include "Common/LogMacros.h"
+#include "Util/LogMacros.h"
 
 #include "CoreMinimal.h"
 #include "Misc/MessageDialog.h"
@@ -63,7 +63,7 @@ namespace rinrin::uejs
 	{
 		if (bIsInitialized)
 		{
-			UEJS_LOG(LogJs, Warning, TEXT("V8 already initialized"));
+			UEJS_LOG(LogJs, Warning, "V8 already initialized");
 			return;
 		}
 		EnsureV8ProcessInitialized();
@@ -73,20 +73,22 @@ namespace rinrin::uejs
 		ArrayBufferAllocator.reset();
 		V8Isolate.reset();
 
-		UEJS_LOG(LogJs, Log, TEXT("Initializing V8 engine..."));
+		UEJS_LOG(LogJs, Log, "Starting V8 engine initialization...");
+		UEJS_LOG(LogJs, Log, "Starting V8 engine initialization {}, {}", 2, "2345");
+		UEJS_LOG(LogJs, Log, "Initializing V8 engine...");
 
 		// Step 3: Create Isolate
 		v8::Isolate::CreateParams create_params;
 		ArrayBufferAllocator.reset(v8::ArrayBuffer::Allocator::NewDefaultAllocator());
 		create_params.array_buffer_allocator = ArrayBufferAllocator.get();
 
-		UEJS_LOG(LogJs, Log, TEXT("Initializing V8 engine...  5555"));
+		UEJS_LOG(LogJs, Log, "Initializing V8 engine...  5555");
 		v8::Isolate *isolate = v8::Isolate::New(create_params);
 		V8Isolate.reset(isolate);
 
 		if (!V8Isolate)
 		{
-			UEJS_LOG(LogJs, Error, TEXT("Failed to create V8 Isolate"));
+			UEJS_LOG(LogJs, Error, "Failed to create V8 Isolate");
 			FMessageDialog::Open(EAppMsgType::Ok, NSLOCTEXT("FV8Loader", "IsolateCreationError", "Failed to create V8 Isolate"));
 			return;
 		}
@@ -105,19 +107,19 @@ namespace rinrin::uejs
 		InspectorTransport = std::make_unique<FCivetWebInspectorTransport>(FCivetWebInspectorTransport::FOptions{});
 		if (!InspectorTransport->Start())
 		{
-			UEJS_LOG(LogJs, Warning, TEXT("Inspector Transport failed to start, but continuing without debugging support"));
+			UEJS_LOG(LogJs, Warning, "Inspector Transport failed to start, but continuing without debugging support");
 		}
 		else
 		{
-			UEJS_LOG(LogJs, Log, TEXT("V8 Inspector Transport is running. Connect via: chrome://inspect or devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229"));
+			UEJS_LOG(LogJs, Log, "V8 Inspector Transport is running. Connect via: chrome://inspect or devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229");
 		}
 
 		// 创建 InspectorHost（必须在任何 JS 执行之前）
 		InspectorHost = std::make_unique<FV8InspectorHost>(V8Platform.get(), isolate, ctx, InspectorTransport.get());
-		UEJS_LOG(LogJs, Log, TEXT("V8 Inspector Host created"));
+		UEJS_LOG(LogJs, Log, "V8 Inspector Host created");
 
 		bIsInitialized = true;
-		UEJS_LOG(LogJs, Log, TEXT("V8 engine initialized successfully"));
+		UEJS_LOG(LogJs, Log, "V8 engine initialized successfully");
 	}
 
 	void FV8Loader::DestroyExecutionContext()
@@ -156,11 +158,11 @@ namespace rinrin::uejs
 	{
 		if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
 		{
-			UEJS_LOG(LogJs, Error, TEXT("V8 is not initialized. Cannot execute JavaScript."));
+			UEJS_LOG(LogJs, Error, "V8 is not initialized. Cannot execute JavaScript.");
 			return std::string("Error: V8 not initialized");
 		}
 
-		UEJS_LOG(LogJs, Verbose, TEXT("Executing JavaScript (len=%d)"), (int)ScriptUtf8.size());
+		UEJS_LOG(LogJs, Verbose, "Executing JavaScript (len={})", (int)ScriptUtf8.size());
 
 		// Enter isolate scope
 		v8::Isolate::Scope isolate_scope(V8Isolate.get());
@@ -174,7 +176,7 @@ namespace rinrin::uejs
 		v8::Local<v8::String> source;
 		if (!v8::String::NewFromUtf8(V8Isolate.get(), ScriptUtf8.data(), v8::NewStringType::kNormal, (int)ScriptUtf8.size()).ToLocal(&source))
 		{
-			UEJS_LOG(LogJs, Error, TEXT("Failed to create V8 source string"));
+			UEJS_LOG(LogJs, Error, "Failed to create V8 source string");
 			return std::string("Error: Failed to create source string");
 		}
 
@@ -188,8 +190,9 @@ namespace rinrin::uejs
 			// Get exception message
 			v8::Local<v8::Value> exception = try_catch.Exception();
 			v8::String::Utf8Value exception_str(V8Isolate.get(), exception);
-			UEJS_LOG(LogJs, Error, TEXT("Failed to compile script: %s"), UTF8_TO_TCHAR(*exception_str));
-			return std::string("Error: Compilation failed - ") + (*exception_str ? *exception_str : "");
+			const char *exceptionCStr = *exception_str ? *exception_str : "";
+			UEJS_LOG(LogJs, Error, "Failed to compile script: {}", exceptionCStr);
+			return std::string("Error: Compilation failed - ") + exceptionCStr;
 		}
 
 		// Run script
@@ -201,20 +204,21 @@ namespace rinrin::uejs
 			// Get exception message
 			v8::Local<v8::Value> exception = try_catch.Exception();
 			v8::String::Utf8Value exception_str(V8Isolate.get(), exception);
-			UEJS_LOG(LogJs, Error, TEXT("Failed to execute script: %s"), UTF8_TO_TCHAR(*exception_str));
-			return std::string("Error: Execution failed - ") + (*exception_str ? *exception_str : "");
+			const char *exceptionCStr = *exception_str ? *exception_str : "";
+			UEJS_LOG(LogJs, Error, "Failed to execute script: {}", exceptionCStr);
+			return std::string("Error: Execution failed - ") + exceptionCStr;
 		}
 
 		// Convert result to string (UTF-8)
 		v8::String::Utf8Value utf8(V8Isolate.get(), result);
 		if (*utf8)
 		{
-			UEJS_LOG(LogJs, Log, TEXT("JavaScript executed successfully. Result: %s"), UTF8_TO_TCHAR(*utf8));
+			UEJS_LOG(LogJs, Log, "JavaScript executed successfully. Result: {}", *utf8);
 			return std::string(*utf8);
 		}
 		else
 		{
-			UEJS_LOG(LogJs, Warning, TEXT("JavaScript executed but result is empty"));
+			UEJS_LOG(LogJs, Warning, "JavaScript executed but result is empty");
 			return std::string();
 		}
 	}
@@ -238,7 +242,7 @@ namespace rinrin::uejs
 			JsModuleManager.reset(new FV8ModuleManager(isolate, ctx));
 		}
 
-		UEJS_LOG(LogJs, Log, TEXT("Loading JS module: %s"), *FString(ModuleName.data()));
+		UEJS_LOG(LogJs, Log, "Loading JS module: {}", ModuleName);
 		UEJS_RETURN_IF_ERROR(TEXT("Loading JS module"), JsModuleManager->LoadModule(ModuleName, InResolve, InLoadSource));
 
 		{
@@ -253,11 +257,11 @@ namespace rinrin::uejs
 				v8::Local<v8::Number> s;
 				if (outResult->ToNumber(ctx).ToLocal(&s))
 				{
-					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction foo: Call success. Return=%lf"), s->Value());
+					UEJS_LOG(LogJs, Log, "ExcuteFunction foo: Call success. Return={}", s->Value());
 				}
 				else
 				{
-					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction foo: Call success. Return (non-number)."));
+					UEJS_LOG(LogJs, Log, "ExcuteFunction foo: Call success. Return (non-number).");
 				}
 			}
 		}
@@ -272,11 +276,11 @@ namespace rinrin::uejs
 				v8::Local<v8::Number> s;
 				if (outResult->ToNumber(ctx).ToLocal(&s))
 				{
-					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction bar: Call success. Return=%lf"), s->Value());
+					UEJS_LOG(LogJs, Log, "ExcuteFunction bar: Call success. Return={}", s->Value());
 				}
 				else
 				{
-					UEJS_LOG(LogJs, Log, TEXT("ExcuteFunction bar: Call success. Return (non-number)."));
+					UEJS_LOG(LogJs, Log, "ExcuteFunction bar: Call success. Return (non-number).");
 				}
 			}
 		}

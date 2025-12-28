@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "ModuleResolver.h"
-#include "Util/LogMacros.h"
+#include "Util/Log.h"
 
 #if defined(_MSC_VER)
 #pragma warning(push)

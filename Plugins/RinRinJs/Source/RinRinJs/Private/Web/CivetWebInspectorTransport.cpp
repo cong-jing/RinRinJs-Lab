@@ -9,7 +9,7 @@ extern "C"
 #include "ThirdParty/civetweb/include/civetweb.h"
 }
 
-#include "Util/LogMacros.h"
+#include "Util/Log.h"
 
 namespace rinrin::uejs
 {
@@ -94,8 +94,7 @@ namespace rinrin::uejs
             &FCivetWebInspectorTransport::WsConnectHandler,
             &FCivetWebInspectorTransport::WsReadyHandler,
             &FCivetWebInspectorTransport::WsDataHandler,
-            &FCivetWebInspectorTransport::WsCloseHandler,
-            this);
+            &FCivetWebInspectorTransport::WsCloseHandler, this);
 
         UEJS_LOG(LogJs, Log, "CivetWeb Inspector WS listening on ws://127.0.0.1:{}{}",
                  Options.Port, Options.Uri);
@@ -104,23 +103,29 @@ namespace rinrin::uejs
 
     void FCivetWebInspectorTransport::Stop()
     {
+        bStopping = true;
+
+        UEJS_LOG(LogJs, Log, "FCivetWebInspectorTransport Stop 1111");
         {
             std::lock_guard<std::mutex> Lock(ConnMutex);
             ActiveConn.store(nullptr);
             bClientSlotTaken.store(false);
         }
 
+        UEJS_LOG(LogJs, Log, "FCivetWebInspectorTransport Stop 2222");
         if (Ctx)
         {
             mg_stop(Ctx);
             Ctx = nullptr;
         }
 
+        UEJS_LOG(LogJs, Log, "FCivetWebInspectorTransport Stop 3333");
         if (bLibraryInitialized)
         {
             mg_exit_library();
             bLibraryInitialized = false;
         }
+        UEJS_LOG(LogJs, Log, "FCivetWebInspectorTransport Stop 4444");
     }
 
     void FCivetWebInspectorTransport::SetOnConnected(std::function<void()> Fn)
@@ -211,11 +216,6 @@ namespace rinrin::uejs
         {
             UEJS_LOG(LogJs, Warning, "mg_websocket_write failed (written={})", Written);
         }
-        else
-        {
-            UEJS_LOG(LogJs, Verbose, "Sent to DevTools ({} bytes): {}",
-                     (int)JsonUtf8.size(), JsonUtf8);
-        }
     }
 
     bool FCivetWebInspectorTransport::IsRemoteLoopback(const mg_connection *Conn) const
@@ -280,6 +280,12 @@ namespace rinrin::uejs
 
     int FCivetWebInspectorTransport::WsDataHandler(mg_connection *Conn, int Bits, char *Data, size_t DataLen, void *CbData)
     {
+        const bool bStopping = static_cast<FCivetWebInspectorTransport *>(CbData)->bStopping;
+        if (bStopping)
+        {
+            return 0; // close
+        }
+
         auto *Self = static_cast<FCivetWebInspectorTransport *>(CbData);
         if (!Self)
         {

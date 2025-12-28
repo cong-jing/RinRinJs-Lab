@@ -62,7 +62,7 @@ namespace rinrin::uejs
         FOptions Options;
 
         mg_context *Ctx = nullptr;
-
+        bool bStopping = false;
         // Connection management
         std::atomic<mg_connection *> ActiveConn{nullptr};
         std::atomic<bool> bClientSlotTaken{false};

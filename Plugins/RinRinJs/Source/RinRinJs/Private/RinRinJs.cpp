@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "RinRinJs.h"
-#include "Util/LogMacros.h"
+#include "Util/Log.h"
 #include "Modules/ModuleManager.h"
 #if RinRinJs_USE_V8
 #include "V8/V8Loader.h"
@@ -14,6 +14,7 @@ DEFINE_LOG_CATEGORY(LogJs)
 
 void FRinRinJsModule::StartupModule()
 {
+	UE_SET_LOG_VERBOSITY(LogJs, VeryVerbose);
 #if RinRinJs_USE_V8
 	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.EnsureV8ProcessInitialized();
@@ -117,6 +118,15 @@ rinrin::uejs::TExpected<void> FRinRinJsModule::LoadJsModule(const std::string_vi
 	UEJS_LOG(LogJs, Log, "LoadJsModule called with module name: {}", ModuleName);
 	FV8Loader &V8Loader = FV8Loader::Get();
 	return V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
+}
+
+rinrin::uejs::TExpected<void> FRinRinJsModule::EvaluateString(const std::string_view ScriptUtf8)
+{
+	UEJS_LOG(LogJs, Log, "EvaluateString called");
+	FV8Loader &V8Loader = FV8Loader::Get();
+	std::string Result = V8Loader.ExecuteJavaScript(ScriptUtf8);
+	UEJS_LOG(LogJs, Log, "EvaluateString result: {}", Result);
+	return rinrin::uejs::TExpected<void>();
 }
 
 IMPLEMENT_MODULE(FRinRinJsModule, RinRinJs)

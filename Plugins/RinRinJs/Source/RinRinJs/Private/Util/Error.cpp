@@ -2,7 +2,13 @@
 
 #include "HAL/PlatformStackWalk.h"
 #include "Misc/OutputDevice.h" // FMsg
-#include "Containers/Array.h"
+
+#include <algorithm>
+#include <format>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -15,16 +21,24 @@
 
 namespace rinrin::uejs
 {
-    FString FSourceLocation::ToString() const
+    std::string FSourceLocation::ToString() const
     {
         if (!IsValid())
         {
-            return TEXT("<unknown>");
+            return "<unknown>";
         }
-        return FString::Printf(TEXT("%s(%d): %s"),
-                               ANSI_TO_TCHAR(File),
-                               Line,
-                               ANSI_TO_TCHAR(Function ? Function : ""));
+        return std::format("[{}:{}]",
+                           File ? File : "<unknown>",
+                           Line);
+    }
+
+    std::string FErrorContextFrame::ToString() const
+    {
+        if (!Where.IsValid())
+        {
+            return What;
+        }
+        return std::format("{} @ {}", What, Where.ToString());
     }
 
     FJsStackInfo::FJsStackInfo(v8::Isolate *Isolate, const v8::TryCatch &TryCatch)
@@ -37,37 +51,32 @@ namespace rinrin::uejs
         v8::HandleScope HandleScope(Isolate);
         v8::Local<v8::Context> Context = Isolate->GetCurrentContext();
 
-        // 获取异常值
         v8::Local<v8::Value> Exception = TryCatch.Exception();
         if (!Exception.IsEmpty())
         {
             v8::String::Utf8Value ExceptionUtf8(Isolate, Exception);
             if (*ExceptionUtf8)
             {
-                Message = UTF8_TO_TCHAR(*ExceptionUtf8);
+                Message.assign(*ExceptionUtf8, ExceptionUtf8.length());
             }
         }
 
-        // 获取详细消息对象
         v8::Local<v8::Message> Msg = TryCatch.Message();
         if (!Msg.IsEmpty())
         {
-            // 脚本名称
             v8::Local<v8::Value> ScriptNameVal = Msg->GetScriptResourceName();
             if (!ScriptNameVal.IsEmpty())
             {
                 v8::String::Utf8Value ScriptNameUtf8(Isolate, ScriptNameVal);
                 if (*ScriptNameUtf8)
                 {
-                    ScriptName = UTF8_TO_TCHAR(*ScriptNameUtf8);
+                    ScriptName.assign(*ScriptNameUtf8, ScriptNameUtf8.length());
                 }
             }
 
-            // 行号和列号
             Line = Msg->GetLineNumber(Context).FromMaybe(-1);
             Column = Msg->GetStartColumn(Context).FromMaybe(-1);
 
-            // 源代码行
             v8::MaybeLocal<v8::String> SourceLineMaybe = Msg->GetSourceLine(Context);
             v8::Local<v8::String> SourceLineLocal;
             if (SourceLineMaybe.ToLocal(&SourceLineLocal))
@@ -75,19 +84,18 @@ namespace rinrin::uejs
                 v8::String::Utf8Value SourceLineUtf8(Isolate, SourceLineLocal);
                 if (*SourceLineUtf8)
                 {
-                    SourceLine = UTF8_TO_TCHAR(*SourceLineUtf8);
+                    SourceLine.assign(*SourceLineUtf8, SourceLineUtf8.length());
                 }
             }
         }
 
-        // 堆栈跟踪
         v8::Local<v8::Value> StackVal;
         if (TryCatch.StackTrace(Context).ToLocal(&StackVal) && StackVal->IsString())
         {
             v8::String::Utf8Value StackUtf8(Isolate, StackVal);
             if (*StackUtf8)
             {
-                Stack = UTF8_TO_TCHAR(*StackUtf8);
+                Stack.assign(*StackUtf8, StackUtf8.length());
             }
         }
     }
@@ -95,133 +103,102 @@ namespace rinrin::uejs
     void FError::CaptureStack(int32 IgnoreFrames)
     {
 #if UEJS_ERROR_ENABLE_STACKTRACE
-        // 仅在需要时抓一次（你也可以改为每次覆盖）
-        // 这里选择覆盖：方便 error 被“补充上下文”后再抓一份新的栈
         bHasStack = false;
-        NativeStack.Reset();
+        NativeStack.clear();
 
-        // 推荐：初始化符号解析（一般 InitStackWalking 是幂等的）
         FPlatformStackWalk::InitStackWalking();
 
-        // 64KB 缓冲区通常够；你可未来做成宏/配置项
-        TArray<ANSICHAR> Buffer;
-        Buffer.SetNumZeroed(64 * 1024);
+        std::vector<ANSICHAR> Buffer;
+        Buffer.resize(64 * 1024);
+        std::fill(Buffer.begin(), Buffer.end(), 0);
 
-        // +1 跳过 CaptureStack 自身；你若还有额外 wrapper，可再加
         FPlatformStackWalk::StackWalkAndDump(
-            Buffer.GetData(),
-            (SIZE_T)Buffer.Num(),
+            Buffer.data(),
+            static_cast<SIZE_T>(Buffer.size()),
             IgnoreFrames + 1,
             /*Context=*/nullptr);
 
-        NativeStack = FString(ANSI_TO_TCHAR(Buffer.GetData()));
-        bHasStack = !NativeStack.IsEmpty();
+        NativeStack = std::string(Buffer.data());
+        bHasStack = !NativeStack.empty();
 #else
         (void)IgnoreFrames;
         bHasStack = false;
-        NativeStack = TEXT("");
+        NativeStack.clear();
 #endif
     }
 
-    FString FError::ToPrettyString(bool bIncludeJsStack, bool bIncludeNativeStack) const
+    std::string FError::ToPrettyString(bool bIncludeJsStack, bool bIncludeNativeStack) const
     {
-        TStringBuilder<4096> B;
+        std::ostringstream B;
 
-        // 主错误消息（类似 Chrome: "Error: message"）
-        B.Append(TEXT("Error: "));
-        B.Append(Message);
-        B.Append(TEXT("\n"));
+        B << "Error: " << Message << "\n";
 
         if (Location.IsValid())
         {
-            // Chrome 风格: at Location (file:line:col)
-            B.Append(TEXT("    at "));
+            B << "    at ";
             if (Location.Function && *Location.Function)
             {
-                B.Append(ANSI_TO_TCHAR(Location.Function));
-                B.Append(TEXT(" "));
+                B << Location.Function << ' ';
             }
-            B.Append(TEXT("("));
-            B.Append(ANSI_TO_TCHAR(Location.File ? Location.File : "unknown"));
-            B.Append(TEXT(":"));
-            B.Append(FString::FromInt(Location.Line));
-            B.Append(TEXT(")\n"));
+            B << '(' << (Location.File ? Location.File : "unknown") << ':' << Location.Line << ")\n";
         }
 
-        // Context frames (logical propagation path)
-        if (ContextFrames.Num() > 0)
+        if (!ContextFrames.empty())
         {
-            B.Append(TEXT("\nContext Chain:\n"));
-            for (int32 i = 0; i < ContextFrames.Num(); ++i)
+            B << "\nContext Chain:\n";
+            for (const auto &Frame : ContextFrames)
             {
-                const auto &Frame = ContextFrames[i];
-                B.Append(TEXT("    "));
-                B.Append(Frame.What);
+                B << "    " << Frame.What;
                 if (Frame.Where.IsValid())
                 {
-                    B.Append(TEXT(" at "));
+                    B << " at ";
                     if (Frame.Where.Function && *Frame.Where.Function)
                     {
-                        B.Append(ANSI_TO_TCHAR(Frame.Where.Function));
-                        B.Append(TEXT(" "));
+                        B << Frame.Where.Function << ' ';
                     }
-                    B.Append(TEXT("("));
-                    B.Append(ANSI_TO_TCHAR(Frame.Where.File ? Frame.Where.File : "unknown"));
-                    B.Append(TEXT(":"));
-                    B.Append(FString::FromInt(Frame.Where.Line));
-                    B.Append(TEXT(")"));
+                    B << '(' << (Frame.Where.File ? Frame.Where.File : "unknown") << ':' << Frame.Where.Line << ')';
                 }
-                B.Append(TEXT("\n"));
+                B << "\n";
             }
         }
 
         if (bIncludeJsStack && JsInfo.IsSet())
         {
-            B.Append(TEXT("\n--- JavaScript Stack ---\n"));
+            B << "\n--- JavaScript Stack ---\n";
 
-            if (!JsInfo.Message.IsEmpty())
+            if (!JsInfo.Message.empty())
             {
-                B.Append(TEXT("    "));
-                B.Append(JsInfo.Message);
-                B.Append(TEXT("\n"));
+                B << "    " << JsInfo.Message << "\n";
             }
 
-            if (!JsInfo.ScriptName.IsEmpty() || JsInfo.Line >= 0 || JsInfo.Column >= 0)
+            if (!JsInfo.ScriptName.empty() || JsInfo.Line >= 0 || JsInfo.Column >= 0)
             {
-                B.Append(TEXT("    at "));
-                B.Append(JsInfo.ScriptName.IsEmpty() ? TEXT("<anonymous>") : JsInfo.ScriptName);
+                B << "    at " << (JsInfo.ScriptName.empty() ? std::string("<anonymous>") : JsInfo.ScriptName);
                 if (JsInfo.Line >= 0)
                 {
-                    B.Append(TEXT(":"));
-                    B.Append(FString::FromInt(JsInfo.Line));
+                    B << ':' << JsInfo.Line;
                     if (JsInfo.Column >= 0)
                     {
-                        B.Append(TEXT(":"));
-                        B.Append(FString::FromInt(JsInfo.Column));
+                        B << ':' << JsInfo.Column;
                     }
                 }
-                B.Append(TEXT("\n"));
+                B << "\n";
             }
 
-            if (!JsInfo.SourceLine.IsEmpty())
+            if (!JsInfo.SourceLine.empty())
             {
-                B.Append(TEXT("    Source: "));
-                B.Append(JsInfo.SourceLine);
-                B.Append(TEXT("\n"));
+                B << "    Source: " << JsInfo.SourceLine << "\n";
             }
 
-            if (!JsInfo.Stack.IsEmpty())
+            if (!JsInfo.Stack.empty())
             {
-                // JS stack 通常已经格式化好了，给每行添加缩进
-                TArray<FString> Lines;
-                JsInfo.Stack.ParseIntoArrayLines(Lines, false);
-                for (const FString &Line : Lines)
+                std::istringstream StackStream(JsInfo.Stack);
+                std::string Line;
+                while (std::getline(StackStream, Line))
                 {
-                    if (!Line.IsEmpty())
+                    if (!Line.empty())
                     {
-                        B.Append(TEXT("        "));
-                        B.Append(Line);
-                        B.Append(TEXT("\n"));
+                        B << "        " << Line << "\n";
                     }
                 }
             }
@@ -229,45 +206,40 @@ namespace rinrin::uejs
 
         if (bIncludeNativeStack)
         {
-            B.Append(TEXT("\n--- Native Stack ---\n"));
+            B << "\n--- Native Stack ---\n";
 
 #if UEJS_ERROR_ENABLE_STACKTRACE
-            if (bHasStack && !NativeStack.IsEmpty())
+            if (bHasStack && !NativeStack.empty())
             {
-                // Native stack 每行添加缩进（总共 8 个空格）
-                TArray<FString> Lines;
-                NativeStack.ParseIntoArrayLines(Lines, false);
-                for (const FString &Line : Lines)
+                std::istringstream StackStream(NativeStack);
+                std::string Line;
+                while (std::getline(StackStream, Line))
                 {
-                    if (!Line.IsEmpty())
+                    if (Line.empty())
                     {
-                        // 如果行已经有缩进，保留它；否则添加我们的缩进
-                        if (Line.StartsWith(TEXT("    ")))
-                        {
-                            // 已有缩进，再加 4 个空格
-                            B.Append(TEXT("    "));
-                            B.Append(Line);
-                        }
-                        else
-                        {
-                            // 没有缩进，加 8 个空格
-                            B.Append(TEXT("        "));
-                            B.Append(Line);
-                        }
-                        B.Append(TEXT("\n"));
+                        continue;
+                    }
+
+                    if (Line.rfind("    ", 0) == 0)
+                    {
+                        B << "    " << Line << "\n";
+                    }
+                    else
+                    {
+                        B << "        " << Line << "\n";
                     }
                 }
             }
             else
             {
-                B.Append(TEXT("    <no stack captured>\n"));
+                B << "    <no stack captured>\n";
             }
 #else
-            B.Append(TEXT("    <stack trace disabled: UEJS_ERROR_ENABLE_STACKTRACE=0>\n"));
+            B << "    <stack trace disabled: UEJS_ERROR_ENABLE_STACKTRACE=0>\n";
 #endif
         }
 
-        return B.ToString();
+        return B.str();
     }
 
     void FError::Log(const FLogCategoryBase &Category,
@@ -275,13 +247,13 @@ namespace rinrin::uejs
                      bool bIncludeJsStack,
                      bool bIncludeNativeStack) const
     {
-        const FString Text = ToPrettyString(bIncludeJsStack, bIncludeNativeStack);
+        const std::string Text = ToPrettyString(bIncludeJsStack, bIncludeNativeStack);
 
-        // 这里不使用 UE_LOG 宏，而是用 FMsg::Logf 以支持“运行时传入 Category”
         const ANSICHAR *File = Location.File ? Location.File : __FILE__;
         const int32 Line = Location.Line > 0 ? Location.Line : 0;
 
-        FMsg::Logf(File, Line, Category.GetCategoryName(), Verbosity, TEXT("%s"), *Text);
+        const FString WideText = UTF8_TO_TCHAR(Text.c_str());
+        FMsg::Logf(File, Line, Category.GetCategoryName(), Verbosity, TEXT("%s"), *WideText);
     }
 
 } // namespace rinrin::uejs

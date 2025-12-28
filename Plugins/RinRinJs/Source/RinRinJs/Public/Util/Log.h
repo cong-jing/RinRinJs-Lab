@@ -25,16 +25,6 @@ namespace rinrin::uejs::util
     {
         return std::format(fmt, std::forward<Args>(args)...);
     }
-
-    // 3) 有额外参数 + 运行期格式串：std::vformat
-    // 关键：排除字符串字面量（const char[N]），避免与 #2 冲突
-    // template <class Fmt, class... Args>
-    //     requires(sizeof...(Args) > 0) && std::convertible_to<Fmt, std::string_view> && (!std::is_array_v<std::remove_reference_t<Fmt>>)
-    // inline std::string FormatString(Fmt &&fmt, Args &&...args)
-    // {
-    //     return std::vformat(std::string_view(fmt),
-    //                         std::make_format_args(std::forward<Args>(args)...));
-    // }
 }
 // 用法：UEJS_LOG(LogJs, Warning, "Something happened: %d", value);
 // 输出示例：LogJs: Warning: [FileName.cpp:init 123] Something happened: 42
@@ -52,7 +42,7 @@ namespace rinrin::uejs::util
 
 #define UEJS_MAKE_ERROR(...)                    \
     ::rinrin::uejs::Err(::rinrin::uejs::FError( \
-        FString(UTF8_TO_TCHAR(::rinrin::uejs::util::FormatString(__VA_ARGS__).c_str())), UEJS_HERE));
+        ::rinrin::uejs::util::FormatString(__VA_ARGS__), UEJS_HERE));
 
 // #define UEJS_MAKE_ERROR(Fmt, ...) \
 //     ::rinrin::uejs::Err(::rinrin::uejs::FError(FString::Printf(Fmt, ##__VA_ARGS__), UEJS_HERE))
@@ -62,7 +52,7 @@ namespace rinrin::uejs::util
 
 #define UEJS_MAKE_ERROR_WITH_JS_STACK(JsError, ...) \
     ::rinrin::uejs::Err(::rinrin::uejs::FError(     \
-        JsError, FString(UTF8_TO_TCHAR(::rinrin::uejs::util::FormatString(__VA_ARGS__).c_str())), UEJS_HERE));
+        JsError, ::rinrin::uejs::util::FormatString(__VA_ARGS__), UEJS_HERE));
 
 // #define UEJS_MAKE_ERROR_WITH_JS_STACK(JsError, Fmt, ...) \
 //     ::rinrin::uejs::Err(::rinrin::uejs::FError(JsError, FString::Printf(Fmt, ##__VA_ARGS__), UEJS_HERE))

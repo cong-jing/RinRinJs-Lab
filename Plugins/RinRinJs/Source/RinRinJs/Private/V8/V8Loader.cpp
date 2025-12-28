@@ -5,7 +5,7 @@
 #include "V8/V8Console.h"
 #include "V8/V8InspectorHost.h"
 #include "Web/CivetWebInspectorTransport.h"
-#include "Util/LogMacros.h"
+#include "Util/Log.h"
 
 #include "CoreMinimal.h"
 #include "Misc/MessageDialog.h"
@@ -101,22 +101,20 @@ namespace rinrin::uejs
 		v8::Local<v8::Context> ctx = v8::Context::New(isolate);
 		V8ContextGlobal.Reset(isolate, ctx);
 
-		FV8Console::InjectConsole(isolate, ctx);
+		// FV8Console::InjectConsole(isolate, ctx);
 
 		// 启动 Inspector Transport (WebSocket)
 		InspectorTransport = std::make_unique<FCivetWebInspectorTransport>(FCivetWebInspectorTransport::FOptions{});
-		if (!InspectorTransport->Start())
+		if (InspectorTransport->Start())
 		{
-			UEJS_LOG(LogJs, Warning, "Inspector Transport failed to start, but continuing without debugging support");
+			InspectorHost = std::make_unique<FV8InspectorHost>(V8Platform.get(), isolate, ctx, InspectorTransport.get());
+			InspectorHost->Start();
+			UEJS_LOG(LogJs, Log, "V8 Inspector created. Connect via: chrome://inspect or devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229");
 		}
 		else
 		{
-			UEJS_LOG(LogJs, Log, "V8 Inspector Transport is running. Connect via: chrome://inspect or devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229");
+			UEJS_LOG(LogJs, Warning, "Inspector Transport failed to start, but continuing without debugging support");
 		}
-
-		// 创建 InspectorHost（必须在任何 JS 执行之前）
-		InspectorHost = std::make_unique<FV8InspectorHost>(V8Platform.get(), isolate, ctx, InspectorTransport.get());
-		UEJS_LOG(LogJs, Log, "V8 Inspector Host created");
 
 		bIsInitialized = true;
 		UEJS_LOG(LogJs, Log, "V8 engine initialized successfully");
@@ -124,6 +122,7 @@ namespace rinrin::uejs
 
 	void FV8Loader::DestroyExecutionContext()
 	{
+		UEJS_LOG(LogJs, Log, "DestroyExecutionContext");
 		// 停止 Inspector Host
 		if (InspectorHost)
 		{
@@ -137,15 +136,19 @@ namespace rinrin::uejs
 			InspectorTransport.reset();
 		}
 
-		JsModuleManager.reset();
+		if (JsModuleManager)
+		{
+			JsModuleManager->UnloadAll();
+			JsModuleManager.reset();
+		}
 		V8ContextGlobal.Reset();
-		ArrayBufferAllocator.reset();
 		if (V8Isolate)
 		{
 			V8Isolate->Exit();
-			V8Isolate->Dispose();
 			V8Isolate.reset();
 		}
+
+		ArrayBufferAllocator.reset();
 		bIsInitialized = false;
 	}
 
@@ -209,18 +212,22 @@ namespace rinrin::uejs
 			return std::string("Error: Execution failed - ") + exceptionCStr;
 		}
 
-		// Convert result to string (UTF-8)
-		v8::String::Utf8Value utf8(V8Isolate.get(), result);
-		if (*utf8)
-		{
-			UEJS_LOG(LogJs, Log, "JavaScript executed successfully. Result: {}", *utf8);
-			return std::string(*utf8);
-		}
-		else
-		{
-			UEJS_LOG(LogJs, Warning, "JavaScript executed but result is empty");
-			return std::string();
-		}
+		// v8::String::Utf8Value utf8(V8Isolate.get(), result);
+		// if (*utf8)
+		// {
+		// 	UEJS_LOG(LogJs, Log, "JavaScript executed successfully. Result: {}", *utf8);
+		// 	return std::string(*utf8);
+		// }
+		// else
+		// {
+		// 	UEJS_LOG(LogJs, Warning, "JavaScript executed but result is empty");
+		// 	return std::string();
+		// }
+		auto result_str = result->ToString(context).ToLocalChecked();
+		v8::String::Utf8Value utf8(V8Isolate.get(), result_str);
+		UEJS_LOG(LogJs, Log, "JavaScript executed successfully. {}", *utf8);
+
+		return std::string(*utf8);
 	}
 
 	TExpected<void> FV8Loader::LoadJsModule(const std::string_view ModuleName, FResolveModuleIdFn InResolve, FLoadSourceByModuleIdFn InLoadSource)
@@ -228,7 +235,7 @@ namespace rinrin::uejs
 		if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
 		{
 			// UEJS_LOG(LogJs, Error, TEXT("V8 is not initialized. Cannot load JS module."));
-			return Err(FError(TEXT("V8 not initialized")));
+			return UEJS_MAKE_ERROR("V8 not initialized");
 		}
 		v8::Isolate *isolate = V8Isolate.get();
 		v8::Isolate::Scope isolate_scope(isolate);
@@ -243,14 +250,14 @@ namespace rinrin::uejs
 		}
 
 		UEJS_LOG(LogJs, Log, "Loading JS module: {}", ModuleName);
-		UEJS_RETURN_IF_ERROR(TEXT("Loading JS module"), JsModuleManager->LoadModule(ModuleName, InResolve, InLoadSource));
+		UEJS_RETURN_IF_ERROR("Loading JS module", JsModuleManager->LoadModule(ModuleName, InResolve, InLoadSource));
 
 		{
 			v8::Local<v8::Value> args[] = {
 				v8::Integer::New(isolate, 10),
 				v8::Integer::New(isolate, 20)};
 			v8::Local<v8::Value> outResult;
-			UEJS_RETURN_IF_ERROR(TEXT("Executing function foo"),
+			UEJS_RETURN_IF_ERROR("Executing function foo",
 								 JsModuleManager->ExecuteFunction(ModuleName, "foo", std::span(args), outResult));
 			if (!outResult.IsEmpty())
 			{
@@ -269,7 +276,7 @@ namespace rinrin::uejs
 			v8::Local<v8::Value> args[] = {
 				v8::Integer::New(isolate, 20)};
 			v8::Local<v8::Value> outResult;
-			UEJS_RETURN_IF_ERROR(TEXT("Executing function bar"),
+			UEJS_RETURN_IF_ERROR("Executing function bar",
 								 JsModuleManager->ExecuteFunction(ModuleName, "bar", std::span(args), outResult));
 			if (!outResult.IsEmpty())
 			{

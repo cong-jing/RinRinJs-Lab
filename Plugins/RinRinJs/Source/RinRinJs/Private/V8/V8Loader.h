@@ -82,15 +82,7 @@ namespace rinrin::uejs
 
 		v8::Global<v8::Context> V8ContextGlobal;
 
-		struct FV8ModuleManagerDeleter
-		{
-			void operator()(FV8ModuleManager *ModuleManager) const
-			{
-				if (ModuleManager)
-					ModuleManager->UnloadAll();
-			}
-		};
-		std::unique_ptr<FV8ModuleManager, FV8ModuleManagerDeleter> JsModuleManager;
+		std::unique_ptr<FV8ModuleManager> JsModuleManager;
 
 		/** Inspector Transport (WebSocket) for debugging */
 		std::unique_ptr<FCivetWebInspectorTransport> InspectorTransport;

@@ -1,7 +1,7 @@
 // V8InspectorHost.cpp
 #include "V8InspectorHost.h"
 #include "Web/IInspectorTransport.h"
-#include "Util/LogMacros.h"
+#include "Util/Log.h"
 #include "HAL/PlatformTime.h"
 #include "HAL/PlatformProcess.h"
 
@@ -41,7 +41,7 @@ namespace rinrin::uejs
         // Send(message.get());
         std::string outUtf8 = v8InspectorStringBufferToUtf8(Isolate, message.get());
 
-        UEJS_LOG(LogJs, Log, "Sending protocol message to DevTools. id {} : {}", callId, outUtf8);
+        UEJS_LOG(LogJs, VeryVerbose, "Sending protocol message to DevTools. id {} : {}", callId, outUtf8);
         Transport->SendMessage(outUtf8);
     }
 
@@ -50,36 +50,8 @@ namespace rinrin::uejs
         // Send(message.get());
         std::string outUtf8 = v8InspectorStringBufferToUtf8(Isolate, message.get());
 
-        UEJS_LOG(LogJs, Log, "Sending protocol message to DevTools. {}", outUtf8);
+        UEJS_LOG(LogJs, VeryVerbose, "Sending notification message to DevTools. {}", outUtf8);
         Transport->SendMessage(outUtf8);
-    }
-    void FV8InspectorHost::FChannel::Send(v8_inspector::StringBuffer *Buf)
-    {
-        if (!Transport || !Buf)
-            return;
-
-        const auto View = Buf->string();
-        std::string OutUtf8;
-        // 兼容 8-bit / 16-bit StringView
-        if (View.is8Bit())
-        {
-            OutUtf8.assign(reinterpret_cast<const char *>(View.characters8()), View.length());
-        }
-        else
-        {
-            // 16-bit 转 UTF-8
-            v8::HandleScope hs(Isolate);
-            auto Str = v8::String::NewFromTwoByte(Isolate,
-                                                  View.characters16(),
-                                                  v8::NewStringType::kNormal,
-                                                  static_cast<int>(View.length()))
-                           .ToLocalChecked();
-            v8::String::Utf8Value Utf8(Isolate, Str);
-            OutUtf8.assign(*Utf8 ? *Utf8 : "", Utf8.length());
-        }
-
-        UEJS_LOG(LogJs, Log, "Sending protocol message to DevTools. {}", OutUtf8);
-        Transport->SendMessage(OutUtf8);
     }
 
     // ---------- FClient ----------
@@ -108,9 +80,44 @@ namespace rinrin::uejs
         bPausedLoop.store(false);
     }
 
-    double FV8InspectorHost::FClient::currentTimeMS()
+    std::unique_ptr<v8_inspector::StringBuffer> FV8InspectorHost::FClient::resourceNameToUrl(
+        const v8_inspector::StringView &resourceName)
     {
-        return FPlatformTime::Seconds() * 1000.0;
+        std::string resultNameUtf8;
+
+        if (resourceName.is8Bit())
+        {
+            resultNameUtf8.assign(reinterpret_cast<const char *>(resourceName.characters8()), resourceName.length());
+        }
+        else
+        {
+            // You would typically use a robust UTF-16 to UTF-8 conversion function here.
+            // A simple example for a basic ASCII string within UTF-16 might be:
+            const uint16_t *data16 = resourceName.characters16();
+            resultNameUtf8.reserve(resourceName.length());
+            for (size_t i = 0; i < resourceName.length(); ++i)
+            {
+                resultNameUtf8 += static_cast<char>(data16[i]); // WARNING: This is only safe for ASCII/basic Latin-1 range
+            }
+            // For correct multi-byte UTF-16, use proper library functions (like those in node_string.h or std::wstring_convert in C++11/17)
+        }
+        for (char &c : resultNameUtf8)
+            if (c == '\\')
+                c = '/';
+
+        if (resultNameUtf8.rfind("file://", 0) != 0)
+        {
+            if (resultNameUtf8.size() >= 3 &&
+                std::isalpha((unsigned char)resultNameUtf8[0]) && resultNameUtf8[1] == ':' && resultNameUtf8[2] == '/')
+            {
+                resultNameUtf8 = "file:///" + resultNameUtf8; // 变成 file:///C:/...
+            }
+        }
+
+        UEJS_LOG(LogJs, Verbose, "FV8InspectorHost::FClient. Resolved resource name to URL: {}", resultNameUtf8);
+
+        return v8_inspector::StringBuffer::create(
+            v8_inspector::StringView(reinterpret_cast<const uint8_t *>(resultNameUtf8.data()), resultNameUtf8.size()));
     }
 
     // ---------- FV8InspectorHost ----------
@@ -120,6 +127,15 @@ namespace rinrin::uejs
         : Platform(Platform), Isolate(InIsolate), Transport(InTransport)
     {
         DefaultContext.Reset(Isolate, InContext);
+    }
+
+    FV8InspectorHost::~FV8InspectorHost()
+    {
+        Shutdown();
+    }
+    void FV8InspectorHost::Start()
+    {
+        UEJS_LOG(LogJs, Log, "Starting V8 Inspector Host");
 
         // 创建 Client 和 Channel
         Client = std::make_unique<FClient>(this);
@@ -131,7 +147,7 @@ namespace rinrin::uejs
         // contextCreated：必须在执行任何 JS 之前
         const char *CtxName = "UE-V8";
         v8_inspector::V8ContextInfo Info(
-            InContext,
+            DefaultContext.Get(Isolate),
             ContextGroupId,
             v8_inspector::StringView(reinterpret_cast<const uint8_t *>(CtxName), strlen(CtxName)));
         Inspector->contextCreated(Info);
@@ -147,28 +163,56 @@ namespace rinrin::uejs
                                          { this->Detach(); });
         }
 
-        TickHandler = FTSTicker::GetCoreTicker().AddTicker(
-            FTickerDelegate::CreateRaw(this, &FV8InspectorHost::Tick),
-            0.016f); // 每 16ms 调用一次
+        TickHandler = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateRaw(this, &FV8InspectorHost::Tick));
     }
 
-    FV8InspectorHost::~FV8InspectorHost()
+    void FV8InspectorHost::Shutdown()
     {
+        if (bShuttingDown.exchange(true))
+        {
+            // 已经在关闭过程中
+            return;
+        }
+
         UEJS_LOG(LogJs, Log, "Destroying V8 Inspector Host");
 
+        // 先停止 Tick（防止 Shutdown 过程中再进 TickOnce）
         if (TickHandler.IsValid())
         {
             FTSTicker::GetCoreTicker().RemoveTicker(TickHandler);
             TickHandler.Reset();
         }
 
-        Detach();
-
-        // contextDestroyed
-        if (Inspector)
+        // 如果你实现了 runMessageLoopOnPause，务必保证这里能让它退出
+        if (Client)
         {
-            Inspector->contextDestroyed(DefaultContext.Get(Isolate));
+            Client->quitMessageLoopOnPause(); // 你自己实现：把 bPausedLoop=false
         }
+
+        UEJS_LOG(LogJs, Log, "Destroying V8 Inspector Host 2222");
+        if (Isolate)
+        {
+            v8::Locker locker(Isolate);
+            v8::Isolate::Scope isolate_scope(Isolate);
+            v8::HandleScope handle_scope(Isolate);
+
+            UEJS_LOG(LogJs, Log, "Destroying V8 Inspector Host 3333");
+            if (Session)
+            {
+                Session->stop(); // 进入 shutdown mode
+                Session.reset();
+            }
+            if (!DefaultContext.IsEmpty())
+            {
+                Inspector->contextDestroyed(DefaultContext.Get(Isolate));
+            }
+        }
+        else
+        {
+            UEJS_LOG(LogJs, Log, "Destroying V8 Inspector Host 4444");
+            Session.reset();
+        }
+        UEJS_LOG(LogJs, Log, "Destroying V8 Inspector Host 5555");
 
         DefaultContext.Reset();
         Inspector.reset();
@@ -227,12 +271,15 @@ namespace rinrin::uejs
             reinterpret_cast<const uint8_t *>(JsonUtf8.data()),
             JsonUtf8.size());
 
-        UEJS_LOG(LogJs, Log, "Dispatch protocol message to Inspector. {}", JsonUtf8);
+        UEJS_LOG(LogJs, VeryVerbose, "Dispatch protocol message to Inspector. {}", JsonUtf8);
         Session->dispatchProtocolMessage(View);
     }
 
     void FV8InspectorHost::TickOnce()
     {
+        if (bShuttingDown.load())
+            return;
+
         if (!Transport)
             return;
 
@@ -243,14 +290,16 @@ namespace rinrin::uejs
         Transport->DrainIncomingMessages(
             [this](std::string &&Msg)
             {
-                UEJS_LOG(LogJs, Verbose, "Dispatching CDP message to Inspector ({} bytes)", Msg.size());
+                if (bShuttingDown.load())
+                    return;
+                UEJS_LOG(LogJs, VeryVerbose, "Dispatching CDP message to Inspector ({} bytes)", Msg.size());
                 this->DispatchProtocolJson(Msg);
             });
 
         // 关键：泵 V8 前台任务 + microtasks，避免 response 卡在 task queue 里
         if (Platform && Isolate)
         {
-            while (v8::platform::PumpMessageLoop(Platform, Isolate))
+            while (!bShuttingDown.load() && v8::platform::PumpMessageLoop(Platform, Isolate))
             {
                 // keep pumping until empty
             }

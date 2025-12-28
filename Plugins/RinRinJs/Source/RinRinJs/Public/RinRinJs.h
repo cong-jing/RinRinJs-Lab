@@ -20,4 +20,6 @@ public:
 	rinrin::uejs::TExpected<void> LoadJsModule(const std::string_view ModuleName,
 											   rinrin::uejs::FResolveModuleIdFn InResolve,
 											   rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource);
+
+	rinrin::uejs::TExpected<void> EvaluateString(const std::string_view ScriptUtf8);
 };

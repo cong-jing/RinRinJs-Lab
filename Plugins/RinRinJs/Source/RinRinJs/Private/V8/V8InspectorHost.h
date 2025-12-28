@@ -33,6 +33,9 @@ namespace rinrin::uejs
 
         ~FV8InspectorHost();
 
+        void Start();
+        void Shutdown();
+
         bool Tick(float DeltaTime); // 每帧调用（主线程）
         void TickOnce();            // 在暂停的消息循环中调用
         void Attach();              // DevTools WS connected
@@ -56,7 +59,6 @@ namespace rinrin::uejs
             void flushProtocolNotifications() override {}
 
         private:
-            void Send(v8_inspector::StringBuffer *Buf);
             v8::Isolate *Isolate{};
             IInspectorTransport *Transport{};
         };
@@ -73,11 +75,11 @@ namespace rinrin::uejs
             v8::Local<v8::Context> ensureDefaultContextInGroup(int contextGroupId) override;
             void runMessageLoopOnPause(int contextGroupId) override;
             void quitMessageLoopOnPause() override;
-            double currentTimeMS() override;
 
         private:
             FV8InspectorHost *Host{};
             std::atomic<bool> bPausedLoop{false};
+            std::unique_ptr<v8_inspector::StringBuffer> resourceNameToUrl(const v8_inspector::StringView &resourceName) override;
         };
 
     private:
@@ -97,6 +99,8 @@ namespace rinrin::uejs
 
         std::unique_ptr<v8_inspector::V8Inspector> Inspector;
         std::unique_ptr<v8_inspector::V8InspectorSession> Session;
+
+        std::atomic<bool> bShuttingDown{false};
     };
 
 } // namespace rinrin::uejs

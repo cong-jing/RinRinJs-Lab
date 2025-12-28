@@ -1,5 +1,5 @@
 #include "V8/V8ModuleManager.h"
-#include "Util/LogMacros.h"
+#include "Util/Log.h"
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -36,10 +36,10 @@ namespace rinrin::uejs
         FResolveModuleIdFn InResolve,
         FLoadSourceByModuleIdFn InLoadSource)
     {
-        UEJS_LOG(LogJs, Verbose, "entry='{}'", EntrySpecifier);
+        UEJS_LOG(LogJs, Verbose, "LoadModule: entry='{}'", EntrySpecifier);
 
         if (!Isolate || Context.IsEmpty())
-            return Err(FError("invalid isolate or context", UEJS_HERE));
+            return Err(FError("Invalid isolate or context", UEJS_HERE));
 
         ResolveModuleId = std::move(InResolve);
         LoadSourceByModuleId = std::move(InLoadSource);
@@ -57,11 +57,11 @@ namespace rinrin::uejs
 
         v8::Local<v8::Module> root = compileResult.Value();
 
-        UEJS_LOG(LogJs, Verbose, "compiled root, status={}", (int)root->GetStatus());
+        UEJS_LOG(LogJs, Verbose, "LoadModule: compiled root, status={}", (int)root->GetStatus());
 
         if (root->GetStatus() < v8::Module::kInstantiated)
         {
-            UEJS_LOG(LogJs, Verbose, "instantiating");
+            UEJS_LOG(LogJs, Verbose, "LoadModule: instantiating");
             v8::Maybe<bool> ok = root->InstantiateModule(ctx, &FV8ModuleManager::ResolveModuleCallback);
             if (ok.IsNothing() || !ok.FromJust())
             {
@@ -74,11 +74,12 @@ namespace rinrin::uejs
 
         if (root->GetStatus() < v8::Module::kEvaluated)
         {
-            UEJS_LOG(LogJs, Verbose, "evaluating");
+            UEJS_LOG(LogJs, Verbose, "LoadModule: evaluating");
             v8::Local<v8::Value> eval;
             if (!root->Evaluate(ctx).ToLocal(&eval))
             {
-                return UEJS_MAKE_ERROR_WITH_JS_STACK(FJsStackInfo(Isolate, try_catch), "Evaluate failed for '{}'", EntrySpecifier);
+                return UEJS_MAKE_ERROR_WITH_JS_STACK(
+                    FJsStackInfo(Isolate, try_catch), "Evaluate failed for '{}'", EntrySpecifier);
             }
         }
 
@@ -127,7 +128,7 @@ namespace rinrin::uejs
         {
             result.Error().Log(LogJs, ELogVerbosity::Error);
             // 2) 关键：抛出异常给 V8（否则 V8 只能“空返回”，容易 fatal）
-            const char *msg = TCHAR_TO_ANSI(*result.Error().GetMessage());
+            const char *msg = result.Error().GetMessage().c_str();
             v8::Local<v8::String> jsMsg;
             if (v8::String::NewFromUtf8(isolate, msg, v8::NewStringType::kNormal).ToLocal(&jsMsg))
             {
@@ -159,8 +160,8 @@ namespace rinrin::uejs
         if (!ResolveModuleId(ReferrerResolvedId, RequestSpecifier, resolvedId, err))
         {
             return UEJS_MAKE_ERROR("GetOrCompileModule: ResolveModuleId failed for '{}': {}",
-                                     RequestSpecifier,
-                                     err);
+                                   RequestSpecifier,
+                                   err);
         }
 
         UEJS_LOG(LogJs, Verbose, "GetOrCompileModule: resolved '{}' -> '{}'", RequestSpecifier, resolvedId);
@@ -260,9 +261,9 @@ namespace rinrin::uejs
                                                       v8::Local<v8::Value> &OutResult)
     {
         UEJS_LOG(LogJs, Verbose,
-                   "ExcuteFunction: ModuleId='{}', FunctionName='{}'",
-                   ModuleId,
-                   FunctionName);
+                 "ExcuteFunction: ModuleId='{}', FunctionName='{}'",
+                 ModuleId,
+                 FunctionName);
 
         v8::Isolate *isolate = Isolate;
         if (!isolate || Context.IsEmpty())
@@ -339,7 +340,7 @@ namespace rinrin::uejs
                     FunctionName);
             }
 
-            UEJS_LOG(LogJs, Verbose, "ExcuteFunction: looking up export");
+            UEJS_LOG(LogJs, VeryVerbose, "ExcuteFunction: looking up export");
             v8::Local<v8::Value> funVal;
             if (!moduleNameSpace->Get(ctx, funKey).ToLocal(&funVal) || !funVal->IsFunction())
             {

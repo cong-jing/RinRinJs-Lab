@@ -1,5 +1,5 @@
 #include "V8/V8Console.h"
-#include "Util/LogMacros.h"
+#include "Util/Log.h"
 
 namespace rinrin::uejs
 {

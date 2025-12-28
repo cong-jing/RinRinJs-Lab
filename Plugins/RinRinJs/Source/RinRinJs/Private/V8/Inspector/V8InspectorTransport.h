@@ -1,7 +1,5 @@
-// CivetWebInspectorTransport.h
+// V8InspectorTransport.h
 #pragma once
-
-#include "IInspectorTransport.h"
 
 #include <atomic>
 #include <functional>
@@ -12,7 +10,7 @@
 struct mg_context;
 struct mg_connection;
 
-namespace rinrin::uejs
+namespace rinrin::uejs::inspector
 {
     /**
      * CivetWeb-based Inspector transport.
@@ -23,7 +21,7 @@ namespace rinrin::uejs
      *   - DrainIncomingMessages() 里出队并交给 Host 派发给 v8_inspector
      *   - SendMessage() 发送 TEXT 帧 JSON 给 DevTools
      */
-    class FCivetWebInspectorTransport final : public IInspectorTransport
+    class FV8InspectorTransport
     {
     public:
         struct FOptions
@@ -35,19 +33,19 @@ namespace rinrin::uejs
             std::string DocumentRoot = "."; // CivetWeb要求配置document_root（即便只用ws）
         };
 
-        explicit FCivetWebInspectorTransport(FOptions InOptions);
-        ~FCivetWebInspectorTransport() override;
+        explicit FV8InspectorTransport(FOptions InOptions);
+        ~FV8InspectorTransport();
 
         // Lifecycle
         bool Start();
         void Stop();
 
         // IInspectorTransport
-        void PumpTransportOnce() override;
-        void DrainIncomingMessages(std::function<void(std::string &&)> Fn) override;
-        void SendMessage(const std::string &JsonUtf8) override;
-        void SetOnConnected(std::function<void()> Fn) override;
-        void SetOnDisconnected(std::function<void()> Fn) override;
+        void PumpTransportOnce();
+        void DrainIncomingMessages(std::function<void(std::string &&)> Fn);
+        void SendMessage(const std::string &JsonUtf8);
+        void SetOnConnected(std::function<void()> Fn);
+        void SetOnDisconnected(std::function<void()> Fn);
 
     private:
         // CivetWeb websocket callbacks (static)

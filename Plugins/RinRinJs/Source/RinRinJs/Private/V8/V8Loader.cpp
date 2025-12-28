@@ -1,10 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "V8/V8Loader.h"
-#include "V8/V8ModuleManager.h"
-#include "V8/V8Console.h"
-#include "V8/V8InspectorHost.h"
-#include "Web/CivetWebInspectorTransport.h"
+#include "V8Loader.h"
+#include "V8ModuleManager.h"
+#include "V8Console.h"
+#include "Inspector/V8Inspector.h"
 #include "Util/Log.h"
 
 #include "CoreMinimal.h"
@@ -73,8 +72,6 @@ namespace rinrin::uejs
 		ArrayBufferAllocator.reset();
 		V8Isolate.reset();
 
-		UEJS_LOG(LogJs, Log, "Starting V8 engine initialization...");
-		UEJS_LOG(LogJs, Log, "Starting V8 engine initialization {}, {}", 2, "2345");
 		UEJS_LOG(LogJs, Log, "Initializing V8 engine...");
 
 		// Step 3: Create Isolate
@@ -104,17 +101,8 @@ namespace rinrin::uejs
 		// FV8Console::InjectConsole(isolate, ctx);
 
 		// 启动 Inspector Transport (WebSocket)
-		InspectorTransport = std::make_unique<FCivetWebInspectorTransport>(FCivetWebInspectorTransport::FOptions{});
-		if (InspectorTransport->Start())
-		{
-			InspectorHost = std::make_unique<FV8InspectorHost>(V8Platform.get(), isolate, ctx, InspectorTransport.get());
-			InspectorHost->Start();
-			UEJS_LOG(LogJs, Log, "V8 Inspector created. Connect via: chrome://inspect or devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229");
-		}
-		else
-		{
-			UEJS_LOG(LogJs, Warning, "Inspector Transport failed to start, but continuing without debugging support");
-		}
+		Inspector = std::make_unique<rinrin::uejs::inspector::FV8Inspector>();
+		Inspector->Start(V8Platform.get(), isolate, ctx);
 
 		bIsInitialized = true;
 		UEJS_LOG(LogJs, Log, "V8 engine initialized successfully");
@@ -124,16 +112,10 @@ namespace rinrin::uejs
 	{
 		UEJS_LOG(LogJs, Log, "DestroyExecutionContext");
 		// 停止 Inspector Host
-		if (InspectorHost)
+		if (Inspector)
 		{
-			InspectorHost.reset();
-		}
-
-		// 停止 Inspector Transport
-		if (InspectorTransport)
-		{
-			InspectorTransport->Stop();
-			InspectorTransport.reset();
+			Inspector->Shutdown();
+			Inspector.reset();
 		}
 
 		if (JsModuleManager)

@@ -2,9 +2,7 @@
 
 #pragma once
 #include "ModuleResolver.h"
-#include "V8/V8ModuleManager.h"
-#include "V8/V8InspectorHost.h"
-#include "Web/CivetWebInspectorTransport.h"
+#include "V8ModuleManager.h"
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -25,6 +23,10 @@ namespace rinrin::uejs
 
 	class FV8ModuleManager;
 	class FV8DevToolsServer;
+	namespace inspector
+	{
+		class FV8Inspector;
+	}
 
 	class FV8Loader
 	{
@@ -85,10 +87,7 @@ namespace rinrin::uejs
 		std::unique_ptr<FV8ModuleManager> JsModuleManager;
 
 		/** Inspector Transport (WebSocket) for debugging */
-		std::unique_ptr<FCivetWebInspectorTransport> InspectorTransport;
-
-		/** Inspector Host for debugging */
-		std::unique_ptr<FV8InspectorHost> InspectorHost;
+		std::unique_ptr<inspector::FV8Inspector> Inspector;
 
 		/** Flag to track if V8 is initialized */
 		bool bIsInitialized;

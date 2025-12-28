@@ -1,4 +1,4 @@
-#include "V8/V8Console.h"
+#include "V8Console.h"
 #include "Util/Log.h"
 
 namespace rinrin::uejs

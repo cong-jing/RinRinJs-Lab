@@ -10,6 +10,8 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogJs, Log, All);
 
+DECLARE_LOG_CATEGORY_EXTERN(LogJsInspector, Log, All);
+
 namespace rinrin::uejs::util
 {
     // 1) 无额外参数：直接返回

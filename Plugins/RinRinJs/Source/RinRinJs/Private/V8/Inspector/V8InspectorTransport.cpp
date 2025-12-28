@@ -1,5 +1,6 @@
-// CivetWebInspectorTransport.cpp
-#include "CivetWebInspectorTransport.h"
+// V8InspectorTransport.cpp
+#include "V8InspectorTransport.h"
+#include "Util/Log.h"
 
 #include <cstring>
 #include <utility>
@@ -9,11 +10,9 @@ extern "C"
 #include "ThirdParty/civetweb/include/civetweb.h"
 }
 
-#include "Util/Log.h"
-
-namespace rinrin::uejs
+namespace rinrin::uejs::inspector
 {
-    FCivetWebInspectorTransport::FCivetWebInspectorTransport(FOptions InOptions)
+    FV8InspectorTransport::FV8InspectorTransport(FOptions InOptions)
         : Options(std::move(InOptions))
     {
         if (Options.Uri.empty())
@@ -22,17 +21,17 @@ namespace rinrin::uejs
         }
     }
 
-    FCivetWebInspectorTransport::~FCivetWebInspectorTransport()
+    FV8InspectorTransport::~FV8InspectorTransport()
     {
         Stop();
     }
 
-    bool FCivetWebInspectorTransport::Start()
+    bool FV8InspectorTransport::Start()
     {
         // 0) 编译期特性检查（你必须在 Build.cs 定义 USE_WEBSOCKET）
         if (!(mg_check_feature(MG_FEATURES_WEBSOCKET) & MG_FEATURES_WEBSOCKET))
         {
-            UEJS_LOG(LogJs, Error, "CivetWeb compiled without WebSocket support (USE_WEBSOCKET not set)");
+            UEJS_LOG(LogJsInspector, Error, "CivetWeb compiled without WebSocket support (USE_WEBSOCKET not set)");
             return false;
         }
 
@@ -74,7 +73,7 @@ namespace rinrin::uejs
 
         if (!Ctx)
         {
-            UEJS_LOG(LogJs, Error,
+            UEJS_LOG(LogJsInspector, Error,
                      "mg_start2 failed. code={} sub={} text={} (see {})",
                      Err.code,
                      Err.code_sub,
@@ -91,56 +90,57 @@ namespace rinrin::uejs
         mg_set_websocket_handler(
             Ctx,
             Options.Uri.c_str(),
-            &FCivetWebInspectorTransport::WsConnectHandler,
-            &FCivetWebInspectorTransport::WsReadyHandler,
-            &FCivetWebInspectorTransport::WsDataHandler,
-            &FCivetWebInspectorTransport::WsCloseHandler, this);
+            &FV8InspectorTransport::WsConnectHandler,
+            &FV8InspectorTransport::WsReadyHandler,
+            &FV8InspectorTransport::WsDataHandler,
+            &FV8InspectorTransport::WsCloseHandler, this);
 
-        UEJS_LOG(LogJs, Log, "CivetWeb Inspector WS listening on ws://127.0.0.1:{}{}",
+        UEJS_LOG(LogJsInspector, Log, "CivetWeb Inspector WS listening on ws://127.0.0.1:{}{}",
                  Options.Port, Options.Uri);
+
         return true;
     }
 
-    void FCivetWebInspectorTransport::Stop()
+    void FV8InspectorTransport::Stop()
     {
         bStopping = true;
 
-        UEJS_LOG(LogJs, Log, "FCivetWebInspectorTransport Stop 1111");
+        UEJS_LOG(LogJsInspector, Log, "FV8InspectorTransport Stop 1111");
         {
             std::lock_guard<std::mutex> Lock(ConnMutex);
             ActiveConn.store(nullptr);
             bClientSlotTaken.store(false);
         }
 
-        UEJS_LOG(LogJs, Log, "FCivetWebInspectorTransport Stop 2222");
+        UEJS_LOG(LogJsInspector, Log, "FV8InspectorTransport Stop 2222");
         if (Ctx)
         {
             mg_stop(Ctx);
             Ctx = nullptr;
         }
 
-        UEJS_LOG(LogJs, Log, "FCivetWebInspectorTransport Stop 3333");
+        UEJS_LOG(LogJsInspector, Log, "FV8InspectorTransport Stop 3333");
         if (bLibraryInitialized)
         {
             mg_exit_library();
             bLibraryInitialized = false;
         }
-        UEJS_LOG(LogJs, Log, "FCivetWebInspectorTransport Stop 4444");
+        UEJS_LOG(LogJsInspector, Log, "FV8InspectorTransport Stop 4444");
     }
 
-    void FCivetWebInspectorTransport::SetOnConnected(std::function<void()> Fn)
+    void FV8InspectorTransport::SetOnConnected(std::function<void()> Fn)
     {
         std::lock_guard<std::mutex> Lock(CallbackMutex);
         OnConnected = std::move(Fn);
     }
 
-    void FCivetWebInspectorTransport::SetOnDisconnected(std::function<void()> Fn)
+    void FV8InspectorTransport::SetOnDisconnected(std::function<void()> Fn)
     {
         std::lock_guard<std::mutex> Lock(CallbackMutex);
         OnDisconnected = std::move(Fn);
     }
 
-    void FCivetWebInspectorTransport::PumpTransportOnce()
+    void FV8InspectorTransport::PumpTransportOnce()
     {
         // CivetWeb 自己有线程在 pump 网络；这里主要是把“连接/断开”转发到调用方线程触发。
         if (bPendingConnected.exchange(false))
@@ -170,7 +170,7 @@ namespace rinrin::uejs
         }
     }
 
-    void FCivetWebInspectorTransport::DrainIncomingMessages(std::function<void(std::string &&)> Fn)
+    void FV8InspectorTransport::DrainIncomingMessages(std::function<void(std::string &&)> Fn)
     {
         for (;;)
         {
@@ -189,7 +189,7 @@ namespace rinrin::uejs
         }
     }
 
-    void FCivetWebInspectorTransport::SendMessage(const std::string &JsonUtf8)
+    void FV8InspectorTransport::SendMessage(const std::string &JsonUtf8)
     {
         mg_connection *Conn = nullptr;
         {
@@ -199,7 +199,7 @@ namespace rinrin::uejs
 
         if (!Conn)
         {
-            UEJS_LOG(LogJs, Verbose, "No active Inspector WS connection for SendMessage");
+            UEJS_LOG(LogJsInspector, Verbose, "No active Inspector WS connection for SendMessage");
             return;
         }
 
@@ -214,11 +214,11 @@ namespace rinrin::uejs
 
         if (Written <= 0)
         {
-            UEJS_LOG(LogJs, Warning, "mg_websocket_write failed (written={})", Written);
+            UEJS_LOG(LogJsInspector, Warning, "mg_websocket_write failed (written={})", Written);
         }
     }
 
-    bool FCivetWebInspectorTransport::IsRemoteLoopback(const mg_connection *Conn) const
+    bool FV8InspectorTransport::IsRemoteLoopback(const mg_connection *Conn) const
     {
         const mg_request_info *Info = mg_get_request_info(Conn);
         if (!Info)
@@ -238,9 +238,9 @@ namespace rinrin::uejs
                (std::strcmp(Addr, "0:0:0:0:0:0:0:1") == 0);
     }
 
-    int FCivetWebInspectorTransport::WsConnectHandler(const mg_connection *Conn, void *CbData)
+    int FV8InspectorTransport::WsConnectHandler(const mg_connection *Conn, void *CbData)
     {
-        auto *Self = static_cast<FCivetWebInspectorTransport *>(CbData);
+        auto *Self = static_cast<FV8InspectorTransport *>(CbData);
         if (!Self)
         {
             return 1; // reject
@@ -261,9 +261,9 @@ namespace rinrin::uejs
         return 0; // accept
     }
 
-    void FCivetWebInspectorTransport::WsReadyHandler(mg_connection *Conn, void *CbData)
+    void FV8InspectorTransport::WsReadyHandler(mg_connection *Conn, void *CbData)
     {
-        auto *Self = static_cast<FCivetWebInspectorTransport *>(CbData);
+        auto *Self = static_cast<FV8InspectorTransport *>(CbData);
         if (!Self)
         {
             return;
@@ -278,15 +278,15 @@ namespace rinrin::uejs
         Self->bPendingConnected.store(true);
     }
 
-    int FCivetWebInspectorTransport::WsDataHandler(mg_connection *Conn, int Bits, char *Data, size_t DataLen, void *CbData)
+    int FV8InspectorTransport::WsDataHandler(mg_connection *Conn, int Bits, char *Data, size_t DataLen, void *CbData)
     {
-        const bool bStopping = static_cast<FCivetWebInspectorTransport *>(CbData)->bStopping;
+        const bool bStopping = static_cast<FV8InspectorTransport *>(CbData)->bStopping;
         if (bStopping)
         {
             return 0; // close
         }
 
-        auto *Self = static_cast<FCivetWebInspectorTransport *>(CbData);
+        auto *Self = static_cast<FV8InspectorTransport *>(CbData);
         if (!Self)
         {
             return 0; // close
@@ -315,9 +315,9 @@ namespace rinrin::uejs
         return 1; // keep open
     }
 
-    void FCivetWebInspectorTransport::WsCloseHandler(const mg_connection *Conn, void *CbData)
+    void FV8InspectorTransport::WsCloseHandler(const mg_connection *Conn, void *CbData)
     {
-        auto *Self = static_cast<FCivetWebInspectorTransport *>(CbData);
+        auto *Self = static_cast<FV8InspectorTransport *>(CbData);
         if (!Self)
         {
             return;

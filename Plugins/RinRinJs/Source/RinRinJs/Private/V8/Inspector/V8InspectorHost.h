@@ -2,7 +2,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Web/IInspectorTransport.h"
 #include <memory>
 #include <atomic>
 #include <string>
@@ -18,8 +17,10 @@
 #pragma warning(pop)
 #endif
 
-namespace rinrin::uejs
+namespace rinrin::uejs::inspector
 {
+    class FV8InspectorTransport;
+
     /**
      * V8 Inspector Host - 集成 v8_inspector，提供 Chrome DevTools 调试功能
      * 负责管理 Inspector、Session、Channel、Client 的生命周期
@@ -29,7 +30,7 @@ namespace rinrin::uejs
     public:
         FV8InspectorHost(v8::Platform *Platform, v8::Isolate *InIsolate,
                          v8::Local<v8::Context> InContext,
-                         IInspectorTransport *InTransport);
+                         FV8InspectorTransport *InTransport);
 
         ~FV8InspectorHost();
 
@@ -52,7 +53,7 @@ namespace rinrin::uejs
         class FChannel final : public v8_inspector::V8Inspector::Channel
         {
         public:
-            FChannel(v8::Isolate *InIsolate, IInspectorTransport *InTransport);
+            FChannel(v8::Isolate *InIsolate, FV8InspectorTransport *InTransport);
 
             void sendResponse(int callId, std::unique_ptr<v8_inspector::StringBuffer> message) override;
             void sendNotification(std::unique_ptr<v8_inspector::StringBuffer> message) override;
@@ -60,7 +61,7 @@ namespace rinrin::uejs
 
         private:
             v8::Isolate *Isolate{};
-            IInspectorTransport *Transport{};
+            FV8InspectorTransport *Transport{};
         };
 
         /**
@@ -92,7 +93,7 @@ namespace rinrin::uejs
         v8::Isolate *Isolate{};
         v8::Global<v8::Context> DefaultContext;
 
-        IInspectorTransport *Transport{};
+        FV8InspectorTransport *Transport{};
 
         std::unique_ptr<FClient> Client;
         std::unique_ptr<FChannel> Channel;

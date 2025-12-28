@@ -6,9 +6,11 @@
 #include <mutex>
 #include <queue>
 #include <string>
+#include <vector>
 
 struct mg_context;
 struct mg_connection;
+struct mg_request_info;
 
 namespace rinrin::uejs::inspector
 {
@@ -24,6 +26,15 @@ namespace rinrin::uejs::inspector
     class FV8InspectorTransport
     {
     public:
+        struct FTargetInfo
+        {
+            std::string Id = "ue-v8";
+            std::string Title = "UE V8";
+            std::string Url = "file:///UE-V8";
+            std::string Description = "UE V8 Inspector";
+            std::string Type = "node";
+        };
+
         struct FOptions
         {
             int Port = 9229;
@@ -47,6 +58,13 @@ namespace rinrin::uejs::inspector
         void SetOnConnected(std::function<void()> Fn);
         void SetOnDisconnected(std::function<void()> Fn);
 
+        // Inspector metadata (用于 /json/list 返回)
+        void SetTargetInfo(FTargetInfo Info);
+
+        // HTTP 发现接口的来源控制：默认仅本机，可添加白名单或放开
+        void AddHttpAllowedAddress(std::string Addr);
+        void SetHttpAllowAll(bool bAllowAll);
+
     private:
         // CivetWeb websocket callbacks (static)
         static int WsConnectHandler(const mg_connection *Conn, void *CbData);
@@ -54,7 +72,16 @@ namespace rinrin::uejs::inspector
         static int WsDataHandler(mg_connection *Conn, int Bits, char *Data, size_t DataLen, void *CbData);
         static void WsCloseHandler(const mg_connection *Conn, void *CbData);
 
+        // HTTP 发现接口 handler
+        static int JsonHttpHandler(mg_connection *Conn, void *CbData);
+
         bool IsRemoteLoopback(const mg_connection *Conn) const;
+        bool IsRemoteAllowed(const mg_request_info *Info) const;
+        bool IsLoopbackAddr(const char *Addr) const;
+        std::string BuildWebSocketUrl() const;
+        std::string BuildDevToolsFrontendUrl() const;
+        std::string BuildJsonListPayload() const;
+        std::string BuildJsonVersionPayload() const;
 
     private:
         FOptions Options;
@@ -79,6 +106,15 @@ namespace rinrin::uejs::inspector
 
         // Protect send vs close (pointer validity window)
         std::mutex ConnMutex;
+
+        // Target metadata for discovery endpoints
+        mutable std::mutex MetaMutex;
+        FTargetInfo TargetInfo;
+
+        // HTTP access control
+        mutable std::mutex HttpAclMutex;
+        bool bHttpAllowAll = false;
+        std::vector<std::string> HttpAllowedAddrs; // in addition to loopback
 
         // Keep option strings alive for mg_start configuration pointers
         std::string PortStr;

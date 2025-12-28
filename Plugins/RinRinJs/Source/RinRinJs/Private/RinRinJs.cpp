@@ -15,6 +15,7 @@ DEFINE_LOG_CATEGORY(LogJs)
 void FRinRinJsModule::StartupModule()
 {
 	UE_SET_LOG_VERBOSITY(LogJs, VeryVerbose);
+	UE_SET_LOG_VERBOSITY(LogJsInspector, Verbose);
 #if RinRinJs_USE_V8
 	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.EnsureV8ProcessInitialized();

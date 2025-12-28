@@ -3,6 +3,7 @@
 #include "Util/Log.h"
 
 #include <cstring>
+#include <sstream>
 #include <utility>
 
 extern "C"
@@ -19,6 +20,11 @@ namespace rinrin::uejs::inspector
         {
             Options.Uri = "/";
         }
+
+        // 默认允许本机地址
+        HttpAllowedAddrs.push_back("127.0.0.1");
+        HttpAllowedAddrs.push_back("::1");
+        HttpAllowedAddrs.push_back("0:0:0:0:0:0:0:1");
     }
 
     FV8InspectorTransport::~FV8InspectorTransport()
@@ -87,6 +93,11 @@ namespace rinrin::uejs::inspector
 
         bLibraryInitialized = true;
 
+        // HTTP discovery handlers (/json, /json/list, /json/version)
+        mg_set_request_handler(Ctx, "/json", &FV8InspectorTransport::JsonHttpHandler, this);
+        mg_set_request_handler(Ctx, "/json/list", &FV8InspectorTransport::JsonHttpHandler, this);
+        mg_set_request_handler(Ctx, "/json/version", &FV8InspectorTransport::JsonHttpHandler, this);
+
         mg_set_websocket_handler(
             Ctx,
             Options.Uri.c_str(),
@@ -138,6 +149,24 @@ namespace rinrin::uejs::inspector
     {
         std::lock_guard<std::mutex> Lock(CallbackMutex);
         OnDisconnected = std::move(Fn);
+    }
+
+    void FV8InspectorTransport::SetTargetInfo(FTargetInfo Info)
+    {
+        std::lock_guard<std::mutex> Lock(MetaMutex);
+        TargetInfo = std::move(Info);
+    }
+
+    void FV8InspectorTransport::AddHttpAllowedAddress(std::string Addr)
+    {
+        std::lock_guard<std::mutex> Lock(HttpAclMutex);
+        HttpAllowedAddrs.push_back(std::move(Addr));
+    }
+
+    void FV8InspectorTransport::SetHttpAllowAll(bool bAllowAll)
+    {
+        std::lock_guard<std::mutex> Lock(HttpAclMutex);
+        bHttpAllowAll = bAllowAll;
     }
 
     void FV8InspectorTransport::PumpTransportOnce()
@@ -227,6 +256,11 @@ namespace rinrin::uejs::inspector
         }
 
         const char *Addr = Info->remote_addr;
+        return IsLoopbackAddr(Addr);
+    }
+
+    bool FV8InspectorTransport::IsLoopbackAddr(const char *Addr) const
+    {
         if (!Addr)
         {
             return false;
@@ -236,6 +270,49 @@ namespace rinrin::uejs::inspector
         return (std::strcmp(Addr, "127.0.0.1") == 0) ||
                (std::strcmp(Addr, "::1") == 0) ||
                (std::strcmp(Addr, "0:0:0:0:0:0:0:1") == 0);
+    }
+
+    bool FV8InspectorTransport::IsRemoteAllowed(const mg_request_info *Info) const
+    {
+        if (!Info)
+        {
+            return false;
+        }
+        const char *Addr = Info->remote_addr;
+        if (!Addr)
+        {
+            return false;
+        }
+
+        const bool bLoop = IsLoopbackAddr(Addr);
+        {
+            std::lock_guard<std::mutex> Lock(HttpAclMutex);
+            if (bHttpAllowAll)
+            {
+                return true;
+            }
+
+            if (bLoop)
+            {
+                return true;
+            }
+
+            for (const std::string &Allowed : HttpAllowedAddrs)
+            {
+                if (Allowed == Addr)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // 若仍要求仅本机则拒绝非 loopback
+        if (Options.bLocalhostOnly)
+        {
+            return false;
+        }
+
+        return false;
     }
 
     int FV8InspectorTransport::WsConnectHandler(const mg_connection *Conn, void *CbData)
@@ -337,6 +414,123 @@ namespace rinrin::uejs::inspector
 
         // Notify host (on caller thread via PumpTransportOnce)
         Self->bPendingDisconnected.store(true);
+    }
+
+    int FV8InspectorTransport::JsonHttpHandler(mg_connection *Conn, void *CbData)
+    {
+        auto *Self = static_cast<FV8InspectorTransport *>(CbData);
+        if (!Self)
+        {
+            return 0;
+        }
+
+        const mg_request_info *Info = mg_get_request_info(Conn);
+        UEJS_LOG(LogJsInspector, VeryVerbose, "Received HTTP request for Inspector JSON discovery {}", Info->remote_addr);
+
+        if (!Self->IsRemoteAllowed(Info))
+        {
+            mg_printf(Conn, "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n");
+            return 403;
+        }
+
+        if (!Info || !Info->request_method || std::strcmp(Info->request_method, "GET") != 0)
+        {
+            mg_printf(Conn, "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n");
+            return 405;
+        }
+
+        const std::string Path = Info->local_uri ? Info->local_uri : "";
+        std::string Body;
+        if (Path == "/json" || Path == "/json/list")
+        {
+            Body = Self->BuildJsonListPayload();
+        }
+        else if (Path == "/json/version")
+        {
+            Body = Self->BuildJsonVersionPayload();
+        }
+        else
+        {
+            mg_printf(Conn, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");
+            return 404;
+        }
+        UEJS_LOG(LogJsInspector, VeryVerbose, "HTTP {} response: {}", Path, Body);
+        mg_printf(Conn,
+                  "HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nCache-Control: no-cache\r\nContent-Length: %zu\r\n\r\n%s",
+                  Body.size(), Body.c_str());
+
+        return 200;
+    }
+
+    std::string FV8InspectorTransport::BuildWebSocketUrl() const
+    {
+        const std::string Host = Options.bLocalhostOnly ? "127.0.0.1" : "localhost"; // 默认使用 loopback
+        std::string Uri = Options.Uri;
+        if (Uri.empty())
+        {
+            Uri = "/";
+        }
+        else if (Uri.front() != '/')
+        {
+            Uri = "/" + Uri;
+        }
+
+        std::ostringstream Oss;
+        Oss << "ws://" << Host << ":" << Options.Port << Uri;
+        return Oss.str();
+    }
+
+    std::string FV8InspectorTransport::BuildDevToolsFrontendUrl() const
+    {
+        std::string Uri = Options.Uri;
+        if (Uri.empty())
+        {
+            Uri = "/";
+        }
+        else if (Uri.front() != '/')
+        {
+            Uri = "/" + Uri;
+        }
+
+        std::ostringstream Oss;
+        Oss << "devtools://devtools/bundled/js_app.html?ws=127.0.0.1:" << Options.Port << Uri;
+        return Oss.str();
+    }
+
+    std::string FV8InspectorTransport::BuildJsonListPayload() const
+    {
+        FTargetInfo Info;
+        {
+            std::lock_guard<std::mutex> Lock(MetaMutex);
+            Info = TargetInfo;
+        }
+
+        const std::string WsUrl = BuildWebSocketUrl();
+        const std::string DevtoolsUrl = BuildDevToolsFrontendUrl();
+
+        std::ostringstream Oss;
+        Oss << "[{\"id\":\"" << Info.Id
+            << "\",\"title\":\"" << Info.Title
+            << "\",\"type\":\"" << Info.Type
+            << "\",\"description\":\"" << Info.Description
+            << "\",\"url\":\"" << Info.Url
+            << "\",\"webSocketDebuggerUrl\":\"" << WsUrl
+            << "\",\"devtoolsFrontendUrl\":\"" << DevtoolsUrl
+            << "\"}]";
+        return Oss.str();
+    }
+
+    std::string FV8InspectorTransport::BuildJsonVersionPayload() const
+    {
+        const std::string WsUrl = BuildWebSocketUrl();
+        std::ostringstream Oss;
+        Oss << "{"
+            << "\"Browser\":\"UE-V8\","
+            << "\"Protocol-Version\":\"1.3\","
+            << "\"User-Agent\":\"UE\","
+            << "\"webSocketDebuggerUrl\":\"" << WsUrl << "\""
+            << "}";
+        return Oss.str();
     }
 
 } // namespace rinrin::uejs

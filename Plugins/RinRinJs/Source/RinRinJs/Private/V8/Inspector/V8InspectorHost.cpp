@@ -1,6 +1,7 @@
 // V8InspectorHost.cpp
 #include "V8InspectorHost.h"
 #include "V8InspectorTransport.h"
+#include "V8InspectorUtil.h"
 #include "Util/Log.h"
 #include "HAL/PlatformTime.h"
 #include "HAL/PlatformProcess.h"
@@ -13,33 +14,33 @@ namespace rinrin::uejs::inspector
     {
     }
 
-    static std::string v8InspectorStringBufferToUtf8(v8::Isolate *Isolate, v8_inspector::StringBuffer *Buf)
-    {
-        const auto View = Buf->string();
-        std::string outUtf8;
-        // 兼容 8-bit / 16-bit StringView
-        if (View.is8Bit())
-        {
-            outUtf8.assign(reinterpret_cast<const char *>(View.characters8()), View.length());
-        }
-        else
-        {
-            // 16-bit 转 UTF-8
-            v8::HandleScope hs(Isolate);
-            auto Str = v8::String::NewFromTwoByte(Isolate,
-                                                  View.characters16(),
-                                                  v8::NewStringType::kNormal,
-                                                  static_cast<int>(View.length()))
-                           .ToLocalChecked();
-            v8::String::Utf8Value Utf8(Isolate, Str);
-            outUtf8.assign(*Utf8 ? *Utf8 : "", Utf8.length());
-        }
-        return outUtf8;
-    }
+    // static std::string v8InspectorStringBufferToUtf8(v8::Isolate *Isolate, v8_inspector::StringBuffer *Buf)
+    // {
+    //     const auto View = Buf->string();
+    //     std::string outUtf8;
+    //     // 兼容 8-bit / 16-bit StringView
+    //     if (View.is8Bit())
+    //     {
+    //         outUtf8.assign(reinterpret_cast<const char *>(View.characters8()), View.length());
+    //     }
+    //     else
+    //     {
+    //         // 16-bit 转 UTF-8
+    //         v8::HandleScope hs(Isolate);
+    //         auto Str = v8::String::NewFromTwoByte(Isolate,
+    //                                               View.characters16(),
+    //                                               v8::NewStringType::kNormal,
+    //                                               static_cast<int>(View.length()))
+    //                        .ToLocalChecked();
+    //         v8::String::Utf8Value Utf8(Isolate, Str);
+    //         outUtf8.assign(*Utf8 ? *Utf8 : "", Utf8.length());
+    //     }
+    //     return outUtf8;
+    // }
     void FV8InspectorHost::FChannel::sendResponse(int callId, std::unique_ptr<v8_inspector::StringBuffer> message)
     {
         // Send(message.get());
-        std::string outUtf8 = v8InspectorStringBufferToUtf8(Isolate, message.get());
+        std::string outUtf8 = util::V8InspectorStringViewToUtf8(message.get()->string());
 
         UEJS_LOG(LogJsInspector, VeryVerbose, "Sending protocol message to DevTools. id {} : {}", callId, outUtf8);
         Transport->SendMessage(outUtf8);
@@ -48,76 +49,10 @@ namespace rinrin::uejs::inspector
     void FV8InspectorHost::FChannel::sendNotification(std::unique_ptr<v8_inspector::StringBuffer> message)
     {
         // Send(message.get());
-        std::string outUtf8 = v8InspectorStringBufferToUtf8(Isolate, message.get());
+        std::string outUtf8 = util::V8InspectorStringViewToUtf8(message.get()->string());
 
         UEJS_LOG(LogJsInspector, VeryVerbose, "Sending notification message to DevTools. {}", outUtf8);
         Transport->SendMessage(outUtf8);
-    }
-
-    // ---------- FClient ----------
-    v8::Local<v8::Context> FV8InspectorHost::FClient::ensureDefaultContextInGroup(int contextGroupId)
-    {
-        return Host->DefaultContext.Get(Host->Isolate);
-    }
-
-    void FV8InspectorHost::FClient::runMessageLoopOnPause(int contextGroupId)
-    {
-        UEJS_LOG(LogJsInspector, Log, "Inspector paused - entering message loop");
-
-        bPausedLoop.store(true);
-        while (bPausedLoop.load())
-        {
-            // 关键：暂停时也要 PumpTransport + dispatch，否则 DevTools step/continue 不生效
-            Host->TickOnce();
-            FPlatformProcess::SleepNoStats(0.001f);
-        }
-
-        UEJS_LOG(LogJsInspector, Log, "Inspector resumed - exiting message loop");
-    }
-
-    void FV8InspectorHost::FClient::quitMessageLoopOnPause()
-    {
-        bPausedLoop.store(false);
-    }
-
-    std::unique_ptr<v8_inspector::StringBuffer> FV8InspectorHost::FClient::resourceNameToUrl(
-        const v8_inspector::StringView &resourceName)
-    {
-        std::string resultNameUtf8;
-
-        if (resourceName.is8Bit())
-        {
-            resultNameUtf8.assign(reinterpret_cast<const char *>(resourceName.characters8()), resourceName.length());
-        }
-        else
-        {
-            // You would typically use a robust UTF-16 to UTF-8 conversion function here.
-            // A simple example for a basic ASCII string within UTF-16 might be:
-            const uint16_t *data16 = resourceName.characters16();
-            resultNameUtf8.reserve(resourceName.length());
-            for (size_t i = 0; i < resourceName.length(); ++i)
-            {
-                resultNameUtf8 += static_cast<char>(data16[i]); // WARNING: This is only safe for ASCII/basic Latin-1 range
-            }
-            // For correct multi-byte UTF-16, use proper library functions (like those in node_string.h or std::wstring_convert in C++11/17)
-        }
-        for (char &c : resultNameUtf8)
-            if (c == '\\')
-                c = '/';
-
-        if (resultNameUtf8.rfind("file://", 0) != 0)
-        {
-            if (resultNameUtf8.size() >= 3 &&
-                std::isalpha((unsigned char)resultNameUtf8[0]) && resultNameUtf8[1] == ':' && resultNameUtf8[2] == '/')
-            {
-                resultNameUtf8 = "file:///" + resultNameUtf8; // 变成 file:///C:/...
-            }
-        }
-
-        UEJS_LOG(LogJsInspector, Verbose, "FV8InspectorHost::FClient. Resolved resource name to URL: {}", resultNameUtf8);
-
-        return v8_inspector::StringBuffer::create(
-            v8_inspector::StringView(reinterpret_cast<const uint8_t *>(resultNameUtf8.data()), resultNameUtf8.size()));
     }
 
     // ---------- FV8InspectorHost ----------

@@ -76,6 +76,17 @@ namespace rinrin::uejs::inspector
             v8::Local<v8::Context> ensureDefaultContextInGroup(int contextGroupId) override;
             void runMessageLoopOnPause(int contextGroupId) override;
             void quitMessageLoopOnPause() override;
+            void consoleAPIMessage(int contextGroupId,
+                                   v8::Isolate::MessageErrorLevel level,
+                                   const v8_inspector::StringView &message,
+                                   const v8_inspector::StringView &url,
+                                   unsigned lineNumber,
+                                   unsigned columnNumber,
+                                   v8_inspector::V8StackTrace *) override;
+            void consoleClear(int contextGroupId) override;
+            void consoleTime(const v8_inspector::StringView &title) override;
+            void consoleTimeEnd(const v8_inspector::StringView &title) override;
+            double currentTimeMS() override;
 
         private:
             FV8InspectorHost *Host{};

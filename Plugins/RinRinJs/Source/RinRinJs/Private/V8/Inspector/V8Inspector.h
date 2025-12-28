@@ -3,20 +3,11 @@
 #include "CoreMinimal.h"
 #include "V8InspectorTransport.h"
 #include "V8InspectorHost.h"
+#include "V8/V8Includes.h"
+#include "v8-inspector.h"
 #include <memory>
 #include <atomic>
 #include <string>
-
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4668)
-#endif
-#include "v8.h"
-#include "libplatform/libplatform.h"
-#include "v8-inspector.h"
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
 namespace rinrin::uejs::inspector
 {

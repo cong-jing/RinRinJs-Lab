@@ -4,15 +4,7 @@
 
 #include "ModuleResolver.h"
 #include "Util/Log.h"
-
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4668)
-#endif
-#include "v8.h"
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
+#include "V8/V8Includes.h"
 
 #include <string>
 #include <string_view>

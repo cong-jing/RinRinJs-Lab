@@ -93,6 +93,29 @@ v8_symbol_level = 2
 strip_debug_info = false
 ```
 
+## 開き方とビルド
+
+通常、このプロジェクトは標準的な Unreal Engine プロジェクトとして扱うのが自然です。ビルドは特定の IDE に依存するものではなく、Unreal Engine と Unreal Build Tool によって行われます。
+
+推奨環境:
+
+- Unreal Engine 5.7
+- C++ デスクトップ開発ツールチェーンを含む Visual Studio 2022
+- 現在の UE ツールチェーンと互換性のある Windows SDK
+
+clone 後の一般的な初回手順:
+
+1. `Plugins/RinRinJs/ThirdParty/v8` にリポジトリ同梱の V8 ヘッダと Win64 静的ライブラリが存在することを確認する。
+2. Unreal Engine 5.7 で `RinRinGame.uproject` を開く。
+3. Unreal からプロジェクトファイル生成を求められたら実行する。
+4. Unreal Editor からプロジェクトをビルドするか、初回起動時に Unreal が自動で行うコンパイルに任せる。
+
+補足:
+
+- 日常的なコンパイルは Unreal Editor から直接行えます。
+- Visual Studio や VSCode は、同じ UBT ベースのビルドパイプラインを扱うための任意の開発環境です。
+- VSCode 用の workspace や IntelliSense、task が必要な場合にのみ、VSCode 向けのプロジェクト生成が必要になります。
+
 ## 実行の流れ
 
 サンプルプロジェクトでは `URinRinGameInstance` から JavaScript ランタイムを起動しています。
@@ -260,4 +283,3 @@ Inspector transport はデフォルトでローカルアクセスのみに制限
 - TypeScript と source map デバッグの改善
 - 古い ChakraCore 関連コードの整理、または履歴資料化
 - Windows 向けビルド手順と smoke test 文書の追加
-

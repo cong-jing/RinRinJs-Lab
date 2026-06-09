@@ -93,6 +93,29 @@ v8_symbol_level = 2
 strip_debug_info = false
 ```
 
+## 打开与编译
+
+正常情况下，这个项目应当被视为一个标准的 Unreal Engine 工程。编译由 Unreal Engine 和 Unreal Build Tool 负责，而不是依赖某个特定 IDE。
+
+推荐环境：
+
+- Unreal Engine 5.7
+- 安装了 C++ 桌面开发工具链的 Visual Studio 2022
+- 与当前 UE 工具链兼容的 Windows SDK
+
+clone 之后通常的首次流程：
+
+1. 确认 `Plugins/RinRinJs/ThirdParty/v8` 中包含仓库附带的 V8 头文件和 Win64 静态库。
+2. 使用 Unreal Engine 5.7 打开 `RinRinGame.uproject`。
+3. 如果 Unreal 提示生成项目文件，则允许它生成。
+4. 从 Unreal Editor 中编译项目，或者在首次打开时让 Unreal 自动触发编译。
+
+说明：
+
+- 日常编译可以直接在 Unreal Editor 内完成。
+- Visual Studio 和 VSCode 都只是围绕同一套 UBT 构建链路的可选开发环境。
+- 只有在你希望使用 VSCode 的 workspace、IntelliSense 或 task 时，才需要额外生成 VSCode 相关工程文件。
+
 ## 运行方式
 
 示例工程当前通过 `URinRinGameInstance` 启动 JavaScript 运行时。
@@ -260,4 +283,3 @@ http://127.0.0.1:9229/json/version
 - 改善 TypeScript 与 source map 调试体验
 - 清理旧的 ChakraCore 历史代码，或将其转入文档说明
 - 增补 Windows 下的编译和 smoke test 文档
-

@@ -93,6 +93,29 @@ v8_symbol_level = 2
 strip_debug_info = false
 ```
 
+## Opening And Building
+
+For normal use, this project should be treated as a standard Unreal Engine project. Building is handled by Unreal Engine and Unreal Build Tool, not by a specific IDE.
+
+Recommended setup:
+
+- Unreal Engine 5.7
+- Visual Studio 2022 with C++ desktop toolchain
+- Windows SDK compatible with the installed UE toolchain
+
+Typical first-run flow after cloning:
+
+1. Make sure the bundled V8 headers and Win64 library are present in `Plugins/RinRinJs/ThirdParty/v8`.
+2. Open `RinRinGame.uproject` with Unreal Engine 5.7.
+3. Let Unreal generate project files if prompted.
+4. Build the project from Unreal Editor or let Unreal trigger the initial compile when opening the project.
+
+Notes:
+
+- Daily compilation can be done directly from Unreal Editor.
+- Visual Studio and VSCode are optional development environments around the same UBT-based build pipeline.
+- VSCode-specific project regeneration is only needed if you want VSCode workspace files, IntelliSense configuration, or editor tasks.
+
 ## How It Runs
 
 The sample project starts the JavaScript runtime from `URinRinGameInstance`.

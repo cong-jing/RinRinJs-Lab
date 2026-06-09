@@ -7,8 +7,8 @@ This repository is intended primarily as portfolio/source-code material. It demo
 Language versions:
 
 - English: `README.md`
-- Simplified Chinese: [README.zh-CN.md](README.zh-CN.md)
-- Japanese: [README.ja.md](README.ja.md)
+- 简体中文: [README.zh-CN.md](README.zh-CN.md)
+- 日本語: [README.ja.md](README.ja.md)
 
 ## Project Goal
 

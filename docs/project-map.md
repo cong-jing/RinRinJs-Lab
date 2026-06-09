@@ -5,8 +5,8 @@ This document describes the main source layout and dependency flow of `RinRinJs-
 Language versions:
 
 - English: `docs/project-map.md`
-- Simplified Chinese: [docs/project-map.zh-CN.md](project-map.zh-CN.md)
-- Japanese: [docs/project-map.ja.md](project-map.ja.md)
+- 简体中文: [docs/project-map.zh-CN.md](project-map.zh-CN.md)
+- 日本語: [docs/project-map.ja.md](project-map.ja.md)
 
 ## Top Level
 

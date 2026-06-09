@@ -16,6 +16,8 @@ public class RinRinJs : ModuleRules
         {
                 "Core",
                 "CoreUObject",
+                "Engine",
+                "Json",
                 "Projects",
         });
 

@@ -323,45 +323,83 @@ namespace rinrin::uejs
         }
 
         UEJS_LOG(LogJs, Verbose, "ExcuteFunction: retrieving module namespace");
-        if (status == v8::Module::kInstantiated)
+        if (status != v8::Module::kInstantiated && status != v8::Module::kEvaluated)
         {
-            v8::Local<v8::Value> moduleNsVal = foundedModule->GetModuleNamespace();
-            if (moduleNsVal.IsEmpty() || !moduleNsVal->IsObject())
-            {
-                return UEJS_MAKE_ERROR("ExcuteFunction: Module namespace is not an object for '{}'.", ModuleId);
-            }
-            v8::Local<v8::Object> moduleNameSpace = moduleNsVal.As<v8::Object>();
-
-            v8::Local<v8::String> funKey;
-            if (!v8::String::NewFromUtf8(isolate, std::string(FunctionName).c_str(), v8::NewStringType::kNormal).ToLocal(&funKey))
-            {
-                return UEJS_MAKE_ERROR(
-                    "ExcuteFunction: Failed to create function key string for '{}'.",
-                    FunctionName);
-            }
-
-            UEJS_LOG(LogJs, VeryVerbose, "ExcuteFunction: looking up export");
-            v8::Local<v8::Value> funVal;
-            if (!moduleNameSpace->Get(ctx, funKey).ToLocal(&funVal) || !funVal->IsFunction())
-            {
-                return UEJS_MAKE_ERROR(
-                    "ExcuteFunction: Export '{}' not found or not a function in module '{}'.",
-                    FunctionName, ModuleId);
-            }
-            v8::Local<v8::Function> targetFn = funVal.As<v8::Function>();
-
-            v8::Local<v8::Value> ret;
-            if (!targetFn->Call(ctx, v8::Undefined(isolate), Args.size(), Args.data()).ToLocal(&ret))
-            {
-                FError err("ExcuteFunction: Call failed", UEJS_HERE);
-                err.SetJsStack(FJsStackInfo(isolate, try_catch));
-                err.Log(LogJs, ELogVerbosity::Error);
-                return Err(MoveTemp(err));
-            }
-
-            OutResult = ret;
+            return UEJS_MAKE_ERROR(
+                "ExcuteFunction: Module '{}' must be instantiated or evaluated before calling exports (status={}).",
+                ModuleId, (int)status);
         }
+
+        v8::Local<v8::Value> moduleNsVal = foundedModule->GetModuleNamespace();
+        if (moduleNsVal.IsEmpty() || !moduleNsVal->IsObject())
+        {
+            return UEJS_MAKE_ERROR("ExcuteFunction: Module namespace is not an object for '{}'.", ModuleId);
+        }
+        v8::Local<v8::Object> moduleNameSpace = moduleNsVal.As<v8::Object>();
+
+        v8::Local<v8::String> funKey;
+        if (!v8::String::NewFromUtf8(isolate, std::string(FunctionName).c_str(), v8::NewStringType::kNormal).ToLocal(&funKey))
+        {
+            return UEJS_MAKE_ERROR(
+                "ExcuteFunction: Failed to create function key string for '{}'.",
+                FunctionName);
+        }
+
+        UEJS_LOG(LogJs, VeryVerbose, "ExcuteFunction: looking up export");
+        v8::Local<v8::Value> funVal;
+        if (!moduleNameSpace->Get(ctx, funKey).ToLocal(&funVal) || !funVal->IsFunction())
+        {
+            return UEJS_MAKE_ERROR(
+                "ExcuteFunction: Export '{}' not found or not a function in module '{}'.",
+                FunctionName, ModuleId);
+        }
+        v8::Local<v8::Function> targetFn = funVal.As<v8::Function>();
+
+        v8::Local<v8::Value> ret;
+        if (!targetFn->Call(ctx, v8::Undefined(isolate), Args.size(), Args.data()).ToLocal(&ret))
+        {
+            FError err("ExcuteFunction: Call failed", UEJS_HERE);
+            err.SetJsStack(FJsStackInfo(isolate, try_catch));
+            err.Log(LogJs, ELogVerbosity::Error);
+            return Err(MoveTemp(err));
+        }
+
+        OutResult = ret;
         return TExpected<void>();
+    }
+
+    bool FV8ModuleManager::HasExportedFunction(std::string_view ModuleId, std::string_view FunctionName) const
+    {
+        if (!Isolate || Context.IsEmpty())
+            return false;
+
+        auto it = ModuleCache.find(std::string(ModuleId));
+        if (it == ModuleCache.end())
+            return false;
+
+        v8::Isolate *isolate = Isolate;
+        v8::HandleScope handle_scope(isolate);
+        v8::Local<v8::Context> ctx = Context.Get(isolate);
+        v8::Context::Scope context_scope(ctx);
+
+        v8::Local<v8::Module> foundedModule = it->second.Get(isolate);
+        auto status = foundedModule->GetStatus();
+        if (status != v8::Module::kInstantiated && status != v8::Module::kEvaluated)
+            return false;
+
+        v8::Local<v8::Value> moduleNsVal = foundedModule->GetModuleNamespace();
+        if (moduleNsVal.IsEmpty() || !moduleNsVal->IsObject())
+            return false;
+        v8::Local<v8::Object> nsObj = moduleNsVal.As<v8::Object>();
+
+        v8::Local<v8::String> funKey;
+        if (!v8::String::NewFromUtf8(isolate, std::string(FunctionName).c_str(), v8::NewStringType::kNormal).ToLocal(&funKey))
+            return false;
+
+        v8::Local<v8::Value> funVal;
+        if (!nsObj->Get(ctx, funKey).ToLocal(&funVal))
+            return false;
+        return funVal->IsFunction();
     }
 
 } // namespace rinrin::uejs

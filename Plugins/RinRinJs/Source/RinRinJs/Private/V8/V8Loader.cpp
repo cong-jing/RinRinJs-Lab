@@ -139,6 +139,22 @@ namespace rinrin::uejs
 		return bIsInitialized && (V8Isolate.get() != nullptr);
 	}
 
+	void FV8Loader::EnsureModuleManager()
+	{
+		if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
+			return;
+		if (JsModuleManager)
+			return;
+
+		v8::Isolate *isolate = V8Isolate.get();
+		v8::Isolate::Scope isolate_scope(isolate);
+		v8::HandleScope handle_scope(isolate);
+		v8::Local<v8::Context> ctx = V8ContextGlobal.Get(isolate);
+		v8::Context::Scope context_scope(ctx);
+
+		JsModuleManager.reset(new FV8ModuleManager(isolate, ctx));
+	}
+
 	std::string FV8Loader::ExecuteJavaScript(std::string_view ScriptUtf8)
 	{
 		if (!bIsInitialized || !V8Isolate || V8ContextGlobal.IsEmpty())
@@ -230,59 +246,9 @@ namespace rinrin::uejs
 		{
 			JsModuleManager.reset(new FV8ModuleManager(isolate, ctx));
 		}
-
 		UEJS_LOG(LogJs, Log, "Loading JS module: {}", ModuleName);
 		UEJS_RETURN_IF_ERROR("Loading JS module", JsModuleManager->LoadModule(ModuleName, InResolve, InLoadSource));
 
-		std::string resolvedModuleId;
-		std::string resolveError;
-		if (!InResolve(std::string_view(), ModuleName, resolvedModuleId, resolveError))
-		{
-			return UEJS_MAKE_ERROR(
-				"Resolve entry module id failed for '{}': {}",
-				ModuleName,
-				resolveError);
-		}
-
-		{
-			v8::Local<v8::Value> args[] = {
-				v8::Integer::New(isolate, 10),
-				v8::Integer::New(isolate, 20)};
-			v8::Local<v8::Value> outResult;
-			UEJS_RETURN_IF_ERROR("Executing function foo",
-								 JsModuleManager->ExecuteFunction(resolvedModuleId, "foo", std::span(args), outResult));
-			if (!outResult.IsEmpty())
-			{
-				v8::Local<v8::Number> s;
-				if (outResult->ToNumber(ctx).ToLocal(&s))
-				{
-					UEJS_LOG(LogJs, Log, "ExcuteFunction foo: Call success. Return={}", s->Value());
-				}
-				else
-				{
-					UEJS_LOG(LogJs, Log, "ExcuteFunction foo: Call success. Return (non-number).");
-				}
-			}
-		}
-		{
-			v8::Local<v8::Value> args[] = {
-				v8::Integer::New(isolate, 20)};
-			v8::Local<v8::Value> outResult;
-			UEJS_RETURN_IF_ERROR("Executing function bar",
-								 JsModuleManager->ExecuteFunction(resolvedModuleId, "bar", std::span(args), outResult));
-			if (!outResult.IsEmpty())
-			{
-				v8::Local<v8::Number> s;
-				if (outResult->ToNumber(ctx).ToLocal(&s))
-				{
-					UEJS_LOG(LogJs, Log, "ExcuteFunction bar: Call success. Return={}", s->Value());
-				}
-				else
-				{
-					UEJS_LOG(LogJs, Log, "ExcuteFunction bar: Call success. Return (non-number).");
-				}
-			}
-		}
 		return TExpected<void>();
 	}
 

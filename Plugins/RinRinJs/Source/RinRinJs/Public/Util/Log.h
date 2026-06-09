@@ -52,9 +52,9 @@ namespace rinrin::uejs::util
 // #define UEJS_MAKE_ERROR_WITH_JS_STACK(JsError, ...) \
 //     ::rinrin::uejs::Err(::rinrin::uejs::FError(JsError, ::rinrin::uejs::util::FormatString(__VA_ARGS__), UEJS_HERE));
 
-#define UEJS_MAKE_ERROR_WITH_JS_STACK(JsError, ...) \
+#define UEJS_MAKE_ERROR_WITH_JS_STACK(JsStackInfo, ...) \
     ::rinrin::uejs::Err(::rinrin::uejs::FError(     \
-        JsError, ::rinrin::uejs::util::FormatString(__VA_ARGS__), UEJS_HERE));
+        JsStackInfo, ::rinrin::uejs::util::FormatString(__VA_ARGS__), UEJS_HERE));
 
 // #define UEJS_MAKE_ERROR_WITH_JS_STACK(JsError, Fmt, ...) \
 //     ::rinrin::uejs::Err(::rinrin::uejs::FError(JsError, FString::Printf(Fmt, ##__VA_ARGS__), UEJS_HERE))

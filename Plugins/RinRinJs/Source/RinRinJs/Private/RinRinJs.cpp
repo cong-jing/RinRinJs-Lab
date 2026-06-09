@@ -4,8 +4,8 @@
 #include "Util/Log.h"
 #include "Modules/ModuleManager.h"
 #if RinRinJs_USE_V8
-#include "V8/V8Loader.h"
-using rinrin::uejs::FV8Loader;
+#include "V8/V8Runtime.h"
+using rinrin::uejs::FV8Runtime;
 #else
 #include "ChakraCoreLoader.h"
 #endif
@@ -17,16 +17,16 @@ void FRinRinJsModule::StartupModule()
 	UE_SET_LOG_VERBOSITY(LogJs, VeryVerbose);
 	UE_SET_LOG_VERBOSITY(LogJsInspector, Verbose);
 #if RinRinJs_USE_V8
-	FV8Loader &V8Loader = FV8Loader::Get();
-	V8Loader.EnsureV8ProcessInitialized();
+	FV8Runtime &V8Runtime = FV8Runtime::Get();
+	V8Runtime.EnsureV8ProcessInitialized();
 #else
 #endif
 }
 void FRinRinJsModule::ShutdownModule()
 {
 #if RinRinJs_USE_V8
-	FV8Loader &V8Loader = FV8Loader::Get();
-	V8Loader.FinalizeV8Process();
+	FV8Runtime &V8Runtime = FV8Runtime::Get();
+	V8Runtime.FinalizeV8Process();
 #else
 #endif
 }
@@ -35,12 +35,12 @@ void FRinRinJsModule::StartRuntime()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 #if RinRinJs_USE_V8
-	// Initialize V8 through V8Loader module
-	FV8Loader &V8Loader = FV8Loader::Get();
-	V8Loader.CreateExecutionContext();
+	// Initialize V8 through V8Runtime module
+	FV8Runtime &V8Runtime = FV8Runtime::Get();
+	V8Runtime.CreateExecutionContext();
 
 	// Test JavaScript execution
-	if (V8Loader.IsContextCreated())
+	if (V8Runtime.IsContextCreated())
 	{
 		UEJS_LOG(LogJs, Log, "Using V8 JavaScript Engine");
 
@@ -48,16 +48,16 @@ void FRinRinJsModule::StartRuntime()
 		FString TestScript = TEXT("'Hello from V8, ' + (1 + 2)");
 		{
 			FTCHARToUTF8 Conv(*TestScript);
-			std::string Result = V8Loader.ExecuteJavaScript(std::string_view(Conv.Get(), Conv.Length()));
-			UEJS_LOG(LogJs, Log, "JavaScript Test Result: {}", Result);
-		}
-
-		// Execute another test script
-		FString MathScript = TEXT("(() => { return 2 + 2; })()");
-		{
-			FTCHARToUTF8 Conv(*MathScript);
-			std::string MathResult = V8Loader.ExecuteJavaScript(std::string_view(Conv.Get(), Conv.Length()));
-			UEJS_LOG(LogJs, Log, "JavaScript Math Test Result: {}", MathResult);
+			auto Result = V8Runtime.EvaluateScript(std::string_view(Conv.Get(), Conv.Length()));
+			if (Result.HasError())
+			{
+				UEJS_LOG(LogJs, Error, "JavaScript execution error: {}", Result.Error().GetMessage());
+				return;
+			}
+			else
+			{
+				UEJS_LOG(LogJs, Log, "JavaScript Test Result: {}", Result.Value().ToString());
+			}
 		}
 	}
 	else
@@ -98,9 +98,9 @@ void FRinRinJsModule::StopRuntime()
 	// we call this function before unloading the module.
 
 #if RinRinJs_USE_V8
-	// Shutdown V8 through V8Loader module
-	FV8Loader &V8Loader = FV8Loader::Get();
-	V8Loader.DestroyExecutionContext();
+	// Shutdown V8 through V8Runtime module
+	FV8Runtime &V8Runtime = FV8Runtime::Get();
+	V8Runtime.DestroyExecutionContext();
 #else
 	// Shutdown ChakraCore through ChakraCoreLoader module
 	if (FModuleManager::Get().IsModuleLoaded("ChakraCoreLoader"))
@@ -117,16 +117,21 @@ rinrin::uejs::TExpected<void> FRinRinJsModule::LoadJsModule(const std::string_vi
 															rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource)
 {
 	UEJS_LOG(LogJs, Log, "LoadJsModule called with module name: {}", ModuleName);
-	FV8Loader &V8Loader = FV8Loader::Get();
-	return V8Loader.LoadJsModule(ModuleName, InResolve, InLoadSource);
+	FV8Runtime &V8Runtime = FV8Runtime::Get();
+	return V8Runtime.LoadJsModule(ModuleName, InResolve, InLoadSource);
 }
 
 rinrin::uejs::TExpected<void> FRinRinJsModule::EvaluateString(const std::string_view ScriptUtf8)
 {
 	UEJS_LOG(LogJs, Log, "EvaluateString called");
-	FV8Loader &V8Loader = FV8Loader::Get();
-	std::string Result = V8Loader.ExecuteJavaScript(ScriptUtf8);
-	UEJS_LOG(LogJs, Log, "EvaluateString result: {}", Result);
+	FV8Runtime &V8Runtime = FV8Runtime::Get();
+	auto Result = V8Runtime.EvaluateScript(ScriptUtf8);
+	if (Result.HasError())
+	{
+		UEJS_LOG(LogJs, Error, "EvaluateString error: {}", Result.Error().GetMessage());
+		return Err(Result.Error());
+	}
+	UEJS_LOG(LogJs, Log, "EvaluateString result: {}", Result.Value().ToString());
 	return rinrin::uejs::TExpected<void>();
 }
 

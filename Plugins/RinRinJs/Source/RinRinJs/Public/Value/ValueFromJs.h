@@ -17,6 +17,14 @@ namespace rinrin::uejs
         FValueFromJs(std::unique_ptr<FValueFromJsImpl> &&Value);
         ~FValueFromJs();
 
+        FValueFromJs(const FValueFromJs &) = delete;
+        FValueFromJs &operator=(const FValueFromJs &) = delete;
+
+        FValueFromJs(FValueFromJs &&) = default;
+        FValueFromJs &operator=(FValueFromJs &&) = default;
+
+        std::string ToString() const;
+
         bool IsUndefined() const;
         bool IsNull() const;
         bool IsBool() const;

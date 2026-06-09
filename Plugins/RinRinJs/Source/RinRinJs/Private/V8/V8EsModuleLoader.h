@@ -5,31 +5,43 @@
 #include "ModuleResolver.h"
 #include "Util/Log.h"
 #include "V8/V8Includes.h"
+#include "Value/ValueFromJs.h"
+#include "Value/ValueIntoJs.h"
 
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <functional>
 #include <span>
+#include <utility>
 
 namespace rinrin::uejs
 {
 
-    class FV8ModuleManager
+    class FPackage
     {
     public:
-        FV8ModuleManager(v8::Isolate *InIsolate, v8::Local<v8::Context> InContext);
-        ~FV8ModuleManager() { UnloadAll(); }
+        FPackage(v8::Isolate *InIsolate, v8::Local<v8::Context> InContext);
+        FPackage(v8::Isolate *InIsolate, v8::Local<v8::Context> InContext, FPackageInfo Info);
+        ~FPackage() { UnloadAll(); }
+
+        void SetResolveAndLoadFunctions(
+            rinrin::uejs::FResolveModuleIdFn InResolve,
+            rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource)
+        {
+            ResolveModuleId = std::move(InResolve);
+            LoadSourceByModuleId = std::move(InLoadSource);
+        }
 
         TExpected<v8::Local<v8::Module>> LoadModule(
             std::string_view EntrySpecifier,
             rinrin::uejs::FResolveModuleIdFn InResolve,
             rinrin::uejs::FLoadSourceByModuleIdFn InLoadSource);
 
-        TExpected<void> ExecuteFunction(std::string_view ModuleId,
-                                        std::string_view FunctionName,
-                                        std::span<v8::Local<v8::Value>> Args,
-                                        v8::Local<v8::Value> &OutResult);
+        TExpected<FValueFromJs> ExecuteJsFunction(std::string_view ModuleId,
+                                                  std::string_view ObjectName,
+                                                  std::string_view FunctionName,
+                                                  std::span<FValueIntoJs> Args);
 
         void UnloadAll();
 
@@ -47,13 +59,13 @@ namespace rinrin::uejs
 
         std::string LookupResolvedId(v8::Local<v8::Module> Module) const;
 
-        static FV8ModuleManager *GetManager(v8::Local<v8::Context> ctx, v8::Isolate *isolate);
-
-        static std::string ToUtf8(v8::Isolate *isolate, v8::Local<v8::String> s);
+        static FPackage *GetManager(v8::Local<v8::Context> ctx, v8::Isolate *isolate);
 
     private:
         v8::Isolate *Isolate = nullptr;
         v8::Global<v8::Context> Context;
+
+        FPackageInfo Info;
 
         rinrin::uejs::FResolveModuleIdFn ResolveModuleId;
         rinrin::uejs::FLoadSourceByModuleIdFn LoadSourceByModuleId;

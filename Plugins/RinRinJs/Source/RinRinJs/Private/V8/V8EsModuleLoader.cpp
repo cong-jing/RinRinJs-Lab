@@ -1,4 +1,5 @@
-#include "V8ModuleManager.h"
+#include "Package.h"
+#include "Util/Converter.h"
 #include "Util/Log.h"
 
 #if defined(_MSC_VER)
@@ -13,7 +14,7 @@
 
 namespace rinrin::uejs
 {
-    FV8ModuleManager::FV8ModuleManager(
+    FPackage::FPackage(
         v8::Isolate *InIsolate,
         v8::Local<v8::Context> InContext)
         : Isolate(InIsolate)
@@ -31,7 +32,16 @@ namespace rinrin::uejs
         }
     }
 
-    TExpected<v8::Local<v8::Module>> FV8ModuleManager::LoadModule(
+    FPackage::FPackage(
+        v8::Isolate *InIsolate,
+        v8::Local<v8::Context> InContext,
+        FPackageInfo InInfo)
+        : FPackage(InIsolate, InContext)
+    {
+        Info = std::move(InInfo);
+    }
+
+    TExpected<v8::Local<v8::Module>> FPackage::LoadModule(
         std::string_view EntrySpecifier,
         FResolveModuleIdFn InResolve,
         FLoadSourceByModuleIdFn InLoadSource)
@@ -62,7 +72,7 @@ namespace rinrin::uejs
         if (root->GetStatus() < v8::Module::kInstantiated)
         {
             UEJS_LOG(LogJs, Verbose, "LoadModule: instantiating");
-            v8::Maybe<bool> ok = root->InstantiateModule(ctx, &FV8ModuleManager::ResolveModuleCallback);
+            v8::Maybe<bool> ok = root->InstantiateModule(ctx, &FPackage::ResolveModuleCallback);
             if (ok.IsNothing() || !ok.FromJust())
             {
                 return UEJS_MAKE_ERROR_WITH_JS_STACK(
@@ -87,7 +97,7 @@ namespace rinrin::uejs
         return root;
     }
 
-    void FV8ModuleManager::UnloadAll()
+    void FPackage::UnloadAll()
     {
         for (auto &kv : ModuleCache)
             kv.second.Reset();
@@ -104,7 +114,7 @@ namespace rinrin::uejs
         Isolate = nullptr;
     }
 
-    v8::MaybeLocal<v8::Module> FV8ModuleManager::ResolveModuleCallback(
+    v8::MaybeLocal<v8::Module> FPackage::ResolveModuleCallback(
         v8::Local<v8::Context> context,
         v8::Local<v8::String> specifier,
         v8::Local<v8::FixedArray> import_assertions,
@@ -112,7 +122,7 @@ namespace rinrin::uejs
     {
         (void)import_assertions;
         v8::Isolate *isolate = context->GetIsolate();
-        FV8ModuleManager *mgr = GetManager(context, isolate);
+        FPackage *mgr = GetManager(context, isolate);
         if (!mgr)
         {
             isolate->ThrowException(v8::Exception::Error(
@@ -120,7 +130,7 @@ namespace rinrin::uejs
             return v8::MaybeLocal<v8::Module>();
         }
 
-        std::string request = ToUtf8(isolate, specifier);
+        std::string request = util::ToStdString(isolate, specifier);
         std::string referrerId = mgr->LookupResolvedId(referrer);
 
         TExpected<v8::Local<v8::Module>> result = mgr->GetOrCompileModule(referrerId, request);
@@ -145,8 +155,8 @@ namespace rinrin::uejs
         return result.Value();
     }
 
-    TExpected<v8::Local<v8::Module>> FV8ModuleManager::GetOrCompileModule(std::string_view ReferrerResolvedId,
-                                                                          std::string_view RequestSpecifier)
+    TExpected<v8::Local<v8::Module>> FPackage::GetOrCompileModule(std::string_view ReferrerResolvedId,
+                                                                  std::string_view RequestSpecifier)
     {
         if (!ResolveModuleId || !LoadSourceByModuleId)
         {
@@ -224,45 +234,40 @@ namespace rinrin::uejs
         return mod;
     }
 
-    void FV8ModuleManager::RememberResolvedId(v8::Local<v8::Module> Module, const std::string &ResolvedId)
+    void FPackage::RememberResolvedId(v8::Local<v8::Module> Module, const std::string &ResolvedId)
     {
         void *key = static_cast<void *>(*Module);
         ModuleIdByPtr[key] = ResolvedId;
     }
 
-    std::string FV8ModuleManager::LookupResolvedId(v8::Local<v8::Module> Module) const
+    std::string FPackage::LookupResolvedId(v8::Local<v8::Module> Module) const
     {
         void *key = static_cast<void *>(*Module);
         auto it = ModuleIdByPtr.find(key);
         return (it == ModuleIdByPtr.end()) ? std::string() : it->second;
     }
 
-    FV8ModuleManager *FV8ModuleManager::GetManager(v8::Local<v8::Context> ctx, v8::Isolate *isolate)
+    FPackage *FPackage::GetManager(v8::Local<v8::Context> ctx, v8::Isolate *isolate)
     {
         if (ctx->GetNumberOfEmbedderDataFields() > kEmbedderSlot)
         {
             void *p = ctx->GetAlignedPointerFromEmbedderData(kEmbedderSlot);
             if (p)
-                return static_cast<FV8ModuleManager *>(p);
+                return static_cast<FPackage *>(p);
         }
         void *p = isolate->GetData(kIsolateSlot);
-        return p ? static_cast<FV8ModuleManager *>(p) : nullptr;
+        return p ? static_cast<FPackage *>(p) : nullptr;
     }
 
-    std::string FV8ModuleManager::ToUtf8(v8::Isolate *isolate, v8::Local<v8::String> s)
-    {
-        v8::String::Utf8Value v(isolate, s);
-        return *v ? std::string(*v, v.length()) : std::string();
-    }
-
-    TExpected<void> FV8ModuleManager::ExecuteFunction(std::string_view ModuleId,
-                                                      std::string_view FunctionName,
-                                                      std::span<v8::Local<v8::Value>> Args,
-                                                      v8::Local<v8::Value> &OutResult)
+    TExpected<FValueFromJs> FPackage::ExecuteJsFunction(std::string_view ModuleId,
+                                                        std::string_view ObjectName,
+                                                        std::string_view FunctionName,
+                                                        std::span<FValueIntoJs> Args)
     {
         UEJS_LOG(LogJs, Verbose,
-                 "ExcuteFunction: ModuleId='{}', FunctionName='{}'",
+                 "ExcuteFunction: ModuleId='{}', ObjectName='{}', FunctionName='{}'",
                  ModuleId,
+                 ObjectName,
                  FunctionName);
 
         v8::Isolate *isolate = Isolate;
@@ -302,7 +307,7 @@ namespace rinrin::uejs
         // 如果缓存的是“已 compile 但未 instantiate”的 module，这里必须先 Instantiate
         if (status == v8::Module::kUninstantiated)
         {
-            v8::Maybe<bool> ok = foundedModule->InstantiateModule(ctx, &FV8ModuleManager::ResolveModuleCallback);
+            v8::Maybe<bool> ok = foundedModule->InstantiateModule(ctx, &FPackage::ResolveModuleCallback);
             if (ok.IsNothing() || !ok.FromJust())
             {
                 return UEJS_MAKE_ERROR_WITH_JS_STACK(
@@ -323,45 +328,62 @@ namespace rinrin::uejs
         }
 
         UEJS_LOG(LogJs, Verbose, "ExcuteFunction: retrieving module namespace");
-        if (status == v8::Module::kInstantiated)
+        if (status != v8::Module::kInstantiated)
         {
-            v8::Local<v8::Value> moduleNsVal = foundedModule->GetModuleNamespace();
-            if (moduleNsVal.IsEmpty() || !moduleNsVal->IsObject())
-            {
-                return UEJS_MAKE_ERROR("ExcuteFunction: Module namespace is not an object for '{}'.", ModuleId);
-            }
-            v8::Local<v8::Object> moduleNameSpace = moduleNsVal.As<v8::Object>();
-
-            v8::Local<v8::String> funKey;
-            if (!v8::String::NewFromUtf8(isolate, std::string(FunctionName).c_str(), v8::NewStringType::kNormal).ToLocal(&funKey))
-            {
-                return UEJS_MAKE_ERROR(
-                    "ExcuteFunction: Failed to create function key string for '{}'.",
-                    FunctionName);
-            }
-
-            UEJS_LOG(LogJs, VeryVerbose, "ExcuteFunction: looking up export");
-            v8::Local<v8::Value> funVal;
-            if (!moduleNameSpace->Get(ctx, funKey).ToLocal(&funVal) || !funVal->IsFunction())
-            {
-                return UEJS_MAKE_ERROR(
-                    "ExcuteFunction: Export '{}' not found or not a function in module '{}'.",
-                    FunctionName, ModuleId);
-            }
-            v8::Local<v8::Function> targetFn = funVal.As<v8::Function>();
-
-            v8::Local<v8::Value> ret;
-            if (!targetFn->Call(ctx, v8::Undefined(isolate), Args.size(), Args.data()).ToLocal(&ret))
-            {
-                FError err("ExcuteFunction: Call failed", UEJS_HERE);
-                err.SetJsStack(FJsStackInfo(isolate, try_catch));
-                err.Log(LogJs, ELogVerbosity::Error);
-                return Err(MoveTemp(err));
-            }
-
-            OutResult = ret;
+            return UEJS_MAKE_ERROR(
+                "ExcuteFunction: Module '{}' is in unexpected status {}.",
+                ModuleId, (int)status);
         }
-        return TExpected<void>();
+        v8::Local<v8::Value> moduleNsVal = foundedModule->GetModuleNamespace();
+        if (moduleNsVal.IsEmpty() || !moduleNsVal->IsObject())
+        {
+            return UEJS_MAKE_ERROR("ExcuteFunction: Module namespace is not an object for '{}'.", ModuleId);
+        }
+        v8::Local<v8::Object> moduleNameSpace = moduleNsVal.As<v8::Object>();
+
+        // TODO: split ObjectName by '.' and set it into array or vetor, then iterate to get the nested object
+        if (!ObjectName.empty())
+        {
+        }
+
+        v8::Local<v8::String> funKey;
+        if (!v8::String::NewFromUtf8(isolate, std::string(FunctionName).c_str(), v8::NewStringType::kNormal).ToLocal(&funKey))
+        {
+            return UEJS_MAKE_ERROR(
+                "ExcuteFunction: Failed to create function key string for '{}'.",
+                FunctionName);
+        }
+
+        UEJS_LOG(LogJs, VeryVerbose, "ExcuteFunction: looking up export");
+        v8::Local<v8::Value> funVal;
+        if (!moduleNameSpace->Get(ctx, funKey).ToLocal(&funVal) || !funVal->IsFunction())
+        {
+            return UEJS_MAKE_ERROR(
+                "ExcuteFunction: Export '{}' not found or not a function in module '{}'.",
+                FunctionName, ModuleId);
+        }
+        v8::Local<v8::Function> targetFn = funVal.As<v8::Function>();
+
+        std::vector<v8::Local<v8::Value>> v8Args;
+        for (const FValueIntoJs &arg : Args)
+        {
+            TExpected<v8::Local<v8::Value>> v8Arg = rinrin::uejs::util::ToV8LocalValue(isolate, ctx, arg);
+            if (v8Arg.HasError())
+            {
+                return Err(v8Arg.Error());
+            }
+            v8Args.push_back(v8Arg.Value());
+        }
+        v8::Local<v8::Value> ret;
+        if (!targetFn->Call(ctx, v8::Undefined(isolate), Args.size(), v8Args.data()).ToLocal(&ret))
+        {
+            FError err("ExcuteFunction: Call failed", UEJS_HERE);
+            err.SetJsStack(FJsStackInfo(isolate, try_catch));
+            err.Log(LogJs, ELogVerbosity::Error);
+            return Err(MoveTemp(err));
+        }
+
+        return util::MakeValueFromV8(isolate, Context.Get(isolate), ret);
     }
 
 } // namespace rinrin::uejs

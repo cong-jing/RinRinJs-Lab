@@ -45,6 +45,15 @@ namespace rinrin::uejs
     bool FValueFromJs::IsDouble() const { return !Impl->Value.IsEmpty() && Impl->Value->IsNumber(); }
     bool FValueFromJs::IsString() const { return !Impl->Value.IsEmpty() && Impl->Value->IsString(); }
 
+    std::string FValueFromJs::ToString() const
+    {
+        if (IsString())
+        {
+            return AsString().Value();
+        }
+        return "value is not a string";
+    }
+
     TExpected<bool> FValueFromJs::AsBool() const
     {
         if (!IsBool())

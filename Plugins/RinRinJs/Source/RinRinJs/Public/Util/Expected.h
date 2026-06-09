@@ -1,6 +1,7 @@
 // Expected.h
 #pragma once
 #include "CoreMinimal.h"
+#include "Misc/TVariant.h"
 #include "Util/Error.h"
 
 namespace rinrin::uejs

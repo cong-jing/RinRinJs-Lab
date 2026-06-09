@@ -234,13 +234,23 @@ namespace rinrin::uejs
 		UEJS_LOG(LogJs, Log, "Loading JS module: {}", ModuleName);
 		UEJS_RETURN_IF_ERROR("Loading JS module", JsModuleManager->LoadModule(ModuleName, InResolve, InLoadSource));
 
+		std::string resolvedModuleId;
+		std::string resolveError;
+		if (!InResolve(std::string_view(), ModuleName, resolvedModuleId, resolveError))
+		{
+			return UEJS_MAKE_ERROR(
+				"Resolve entry module id failed for '{}': {}",
+				ModuleName,
+				resolveError);
+		}
+
 		{
 			v8::Local<v8::Value> args[] = {
 				v8::Integer::New(isolate, 10),
 				v8::Integer::New(isolate, 20)};
 			v8::Local<v8::Value> outResult;
 			UEJS_RETURN_IF_ERROR("Executing function foo",
-								 JsModuleManager->ExecuteFunction(ModuleName, "foo", std::span(args), outResult));
+								 JsModuleManager->ExecuteFunction(resolvedModuleId, "foo", std::span(args), outResult));
 			if (!outResult.IsEmpty())
 			{
 				v8::Local<v8::Number> s;
@@ -259,7 +269,7 @@ namespace rinrin::uejs
 				v8::Integer::New(isolate, 20)};
 			v8::Local<v8::Value> outResult;
 			UEJS_RETURN_IF_ERROR("Executing function bar",
-								 JsModuleManager->ExecuteFunction(ModuleName, "bar", std::span(args), outResult));
+								 JsModuleManager->ExecuteFunction(resolvedModuleId, "bar", std::span(args), outResult));
 			if (!outResult.IsEmpty())
 			{
 				v8::Local<v8::Number> s;

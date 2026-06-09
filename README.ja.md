@@ -55,6 +55,18 @@
 - マルチプラットフォーム向けバイナリ配布
 - Node.js 互換や大規模な JavaScript 実行環境の再現
 
+## 起動確認
+
+JavaScript ランタイムが実際に起動しているかは、Unreal のログを見ると確認できます(Log Category: LogJs)。
+
+確認したいポイント:
+
+- `main` モジュールの読み込みが完了していること
+- JavaScript 側の `console.log(...)` 出力が Unreal ログに流れていること
+- ハイライトしている箇所で、サンプルコードの簡単な加算処理が期待通りに実行されていること
+
+![Unreal ログ上で JavaScript モジュール読み込みと実行結果を確認できるスクリーンショット](docs/images/runtime-verification-log.png)
+
 ## 対応プラットフォーム
 
 現在の対象:

@@ -55,6 +55,18 @@ Not a goal right now:
 - Multi-platform binary distribution.
 - Full JavaScript standard library or Node.js compatibility.
 
+## Runtime Verification
+
+You can confirm that the JavaScript runtime has started successfully by checking the Unreal log(Log Category: LogJs).
+
+What to look for:
+
+- the `main` module finishes loading successfully;
+- JavaScript `console.log(...)` output appears in the Unreal log;
+- the highlighted lines show the sample JavaScript code running a simple addition and producing the expected result.
+
+![Screenshot of the Unreal log showing successful JavaScript module loading and execution](docs/images/runtime-verification-log.png)
+
 ## Platform Support
 
 Current target:

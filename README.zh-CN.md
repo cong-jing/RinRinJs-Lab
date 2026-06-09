@@ -55,6 +55,18 @@
 - 多平台二进制分发
 - 完整的 Node.js 兼容层或大而全的 JS 标准库环境
 
+## 运行确认
+
+要确认 JavaScript 运行时是否真的已经启动，可以直接查看 Unreal 日志(Log Category: LogJs)。
+
+建议重点确认：
+
+- `main` 模块已经成功加载完成；
+- JavaScript 里的 `console.log(...)` 输出已经进入 Unreal 日志；
+- 截图中高亮的部分显示示例脚本执行了简单加法，并得到了预期结果。
+
+![展示 JavaScript 模块加载与执行结果的 Unreal 日志截图](docs/images/runtime-verification-log.png)
+
 ## 平台支持
 
 当前目标平台：

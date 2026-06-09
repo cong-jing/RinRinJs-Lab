@@ -1,6 +1,6 @@
-# RinRinGame / RinRinJs
+# RinRinJs-Lab / RinRinJs
 
-RinRinGame is an Unreal Engine 5.7 sample project built around `RinRinJs`, a runtime plugin that embeds Google V8 into Unreal Engine and allows C++ gameplay code to load, execute, and debug JavaScript.
+RinRinJs-Lab is an Unreal Engine 5.7 sample project built around `RinRinJs`, a runtime plugin that embeds Google V8 into Unreal Engine and allows C++ gameplay code to load, execute, and debug JavaScript.
 
 This repository is intended primarily as portfolio/source-code material. It demonstrates my approach to native engine integration, third-party runtime embedding, Unreal module boundaries, error handling, and developer tooling. It is an exploratory project, not a maintained production plugin, and I do not provide compatibility guarantees or long-term support for external use.
 
@@ -106,7 +106,7 @@ Recommended setup:
 Typical first-run flow after cloning:
 
 1. Make sure the bundled V8 headers and Win64 library are present in `Plugins/RinRinJs/ThirdParty/v8`.
-2. Open `RinRinGame.uproject` with Unreal Engine 5.7.
+2. Open `RinRinJsLab.uproject` with Unreal Engine 5.7.
 3. Let Unreal generate project files if prompted.
 4. Build the project from Unreal Editor or let Unreal trigger the initial compile when opening the project.
 
@@ -118,11 +118,11 @@ Notes:
 
 ## How It Runs
 
-The sample project starts the JavaScript runtime from `URinRinGameInstance`.
+The sample project starts the JavaScript runtime from `URinRinJsLabGameInstance`.
 
 At startup:
 
-1. `URinRinGameInstance::Init()` is called by Unreal.
+1. `URinRinJsLabGameInstance::Init()` is called by Unreal.
 2. It obtains the `RinRinJs` module through `FModuleManager`.
 3. It calls `FRinRinJsModule::StartRuntime()`.
 4. The plugin initializes V8 and creates an execution context.
@@ -131,7 +131,7 @@ At startup:
 
 At shutdown:
 
-1. `URinRinGameInstance::Shutdown()` obtains the plugin module again.
+1. `URinRinJsLabGameInstance::Shutdown()` obtains the plugin module again.
 2. It calls `FRinRinJsModule::StopRuntime()`.
 3. The plugin tears down loaded modules, Inspector, V8 context, isolate, allocator, and process-level V8 resources.
 
@@ -159,8 +159,8 @@ if (FModuleManager::Get().IsModuleLoaded("RinRinJs"))
 
     auto LoadResult = Module.LoadJsModule(
         "main",
-        &URinRinGameInstance::resolveModulePath,
-        &URinRinGameInstance::LoadJavascriptFile);
+        &URinRinJsLabGameInstance::resolveModulePath,
+        &URinRinJsLabGameInstance::LoadJavascriptFile);
 
     if (!LoadResult)
     {

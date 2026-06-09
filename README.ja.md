@@ -1,6 +1,6 @@
-# RinRinGame / RinRinJs
+# RinRinJs-Lab / RinRinJs
 
-`RinRinGame` は Unreal Engine 5.7 ベースのサンプルプロジェクトであり、その中心となるのが `RinRinJs` というランタイムプラグインです。このプラグインは Google V8 を Unreal Engine に組み込み、C++ のゲームコードから JavaScript の読み込み、実行、デバッグを行えるようにします。
+`RinRinJs-Lab` は Unreal Engine 5.7 ベースのサンプルプロジェクトであり、その中心となるのが `RinRinJs` というランタイムプラグインです。このプラグインは Google V8 を Unreal Engine に組み込み、C++ のゲームコードから JavaScript の読み込み、実行、デバッグを行えるようにします。
 
 このリポジトリは主にポートフォリオおよびソースコード展示用です。ネイティブエンジン統合、サードパーティランタイムの埋め込み、Unreal のモジュール境界設計、エラーハンドリング、開発者向けツール統合に対する自分の実装方針を示すことを目的としています。探索的なプロジェクトであり、製品として継続保守するプラグインではありません。そのため、互換性保証や外部利用者向けの長期サポートは提供していません。
 
@@ -106,7 +106,7 @@ strip_debug_info = false
 clone 後の一般的な初回手順:
 
 1. `Plugins/RinRinJs/ThirdParty/v8` にリポジトリ同梱の V8 ヘッダと Win64 静的ライブラリが存在することを確認する。
-2. Unreal Engine 5.7 で `RinRinGame.uproject` を開く。
+2. Unreal Engine 5.7 で `RinRinJsLab.uproject` を開く。
 3. Unreal からプロジェクトファイル生成を求められたら実行する。
 4. Unreal Editor からプロジェクトをビルドするか、初回起動時に Unreal が自動で行うコンパイルに任せる。
 
@@ -118,11 +118,11 @@ clone 後の一般的な初回手順:
 
 ## 実行の流れ
 
-サンプルプロジェクトでは `URinRinGameInstance` から JavaScript ランタイムを起動しています。
+サンプルプロジェクトでは `URinRinJsLabGameInstance` から JavaScript ランタイムを起動しています。
 
 起動時:
 
-1. Unreal が `URinRinGameInstance::Init()` を呼びます。
+1. Unreal が `URinRinJsLabGameInstance::Init()` を呼びます。
 2. `FModuleManager` 経由で `RinRinJs` モジュールを取得します。
 3. `FRinRinJsModule::StartRuntime()` を呼びます。
 4. プラグインが V8 を初期化し、実行コンテキストを生成します。
@@ -131,7 +131,7 @@ clone 後の一般的な初回手順:
 
 終了時:
 
-1. `URinRinGameInstance::Shutdown()` で再度プラグインモジュールを取得します。
+1. `URinRinJsLabGameInstance::Shutdown()` で再度プラグインモジュールを取得します。
 2. `FRinRinJsModule::StopRuntime()` を呼びます。
 3. プラグインがロード済みモジュール、Inspector、V8 context、isolate、allocator、およびプロセスレベルの V8 リソースを解放します。
 
@@ -159,8 +159,8 @@ if (FModuleManager::Get().IsModuleLoaded("RinRinJs"))
 
     auto LoadResult = Module.LoadJsModule(
         "main",
-        &URinRinGameInstance::resolveModulePath,
-        &URinRinGameInstance::LoadJavascriptFile);
+        &URinRinJsLabGameInstance::resolveModulePath,
+        &URinRinJsLabGameInstance::LoadJavascriptFile);
 
     if (!LoadResult)
     {

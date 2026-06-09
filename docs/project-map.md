@@ -1,6 +1,6 @@
 # Project Map
 
-This document describes the main source layout and dependency flow of `RinRinGame` and the `RinRinJs` plugin.
+This document describes the main source layout and dependency flow of `RinRinJs-Lab` and the `RinRinJs` plugin.
 
 Language versions:
 
@@ -11,26 +11,26 @@ Language versions:
 ## Top Level
 
 ```text
-RinRinGame.uproject
-Source/RinRinGame
+RinRinJsLab.uproject
+Source/RinRinJsLab
 Content/Mods/Core
 Plugins/RinRinJs
 ```
 
 Responsibilities:
 
-- `RinRinGame.uproject` defines the Unreal project.
-- `Source/RinRinGame` contains the sample game module.
+- `RinRinJsLab.uproject` defines the Unreal project.
+- `Source/RinRinJsLab` contains the sample game module.
 - `Content/Mods/Core` contains JavaScript examples loaded by the runtime.
 - `Plugins/RinRinJs` contains the Unreal plugin that embeds V8.
 
 ## Game Module
 
 ```text
-Source/RinRinGame/
-  RinRinGameInstance.h
-  RinRinGameInstance.cpp
-  RinRinGame.Build.cs
+Source/RinRinJsLab/
+  RinRinJsLabGameInstance.h
+  RinRinJsLabGameInstance.cpp
+  RinRinJsLab.Build.cs
 ```
 
 Responsibilities:
@@ -44,7 +44,7 @@ Responsibilities:
 Current dependency:
 
 ```text
-RinRinGame.Build.cs
+RinRinJsLab.Build.cs
   -> PrivateDependencyModuleNames
     -> RinRinJs
 ```
@@ -269,7 +269,7 @@ Responsibilities:
 ## Overall Dependency Flow
 
 ```text
-RinRinGame GameInstance
+RinRinJsLab GameInstance
   -> FRinRinJsModule
     -> FV8Runtime
       -> V8 process/platform

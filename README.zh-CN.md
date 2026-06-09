@@ -1,6 +1,6 @@
-# RinRinGame / RinRinJs
+# RinRinJs-Lab / RinRinJs
 
-`RinRinGame` 是一个基于 Unreal Engine 5.7 的示例工程，核心内容是项目内插件 `RinRinJs`。这个插件将 Google V8 嵌入 Unreal Engine，使 C++ 游戏代码能够加载、执行并调试 JavaScript。
+`RinRinJs-Lab` 是一个基于 Unreal Engine 5.7 的示例工程，核心内容是项目内插件 `RinRinJs`。这个插件将 Google V8 嵌入 Unreal Engine，使 C++ 游戏代码能够加载、执行并调试 JavaScript。
 
 这个仓库主要作为作品集和源码展示材料使用，用来体现我在原生引擎集成、第三方运行时嵌入、Unreal 模块边界设计、错误处理以及开发调试工具方面的实现方式。它本质上是一个探索性项目，而不是一个承诺长期维护的产品化插件，因此我不提供兼容性保证，也不承诺面向外部使用的长期支持。
 
@@ -106,7 +106,7 @@ strip_debug_info = false
 clone 之后通常的首次流程：
 
 1. 确认 `Plugins/RinRinJs/ThirdParty/v8` 中包含仓库附带的 V8 头文件和 Win64 静态库。
-2. 使用 Unreal Engine 5.7 打开 `RinRinGame.uproject`。
+2. 使用 Unreal Engine 5.7 打开 `RinRinJsLab.uproject`。
 3. 如果 Unreal 提示生成项目文件，则允许它生成。
 4. 从 Unreal Editor 中编译项目，或者在首次打开时让 Unreal 自动触发编译。
 
@@ -118,11 +118,11 @@ clone 之后通常的首次流程：
 
 ## 运行方式
 
-示例工程当前通过 `URinRinGameInstance` 启动 JavaScript 运行时。
+示例工程当前通过 `URinRinJsLabGameInstance` 启动 JavaScript 运行时。
 
 启动流程：
 
-1. Unreal 调用 `URinRinGameInstance::Init()`。
+1. Unreal 调用 `URinRinJsLabGameInstance::Init()`。
 2. 通过 `FModuleManager` 获取 `RinRinJs` 模块。
 3. 调用 `FRinRinJsModule::StartRuntime()`。
 4. 插件初始化 V8，并创建执行上下文。
@@ -131,7 +131,7 @@ clone 之后通常的首次流程：
 
 关闭流程：
 
-1. `URinRinGameInstance::Shutdown()` 再次获取插件模块。
+1. `URinRinJsLabGameInstance::Shutdown()` 再次获取插件模块。
 2. 调用 `FRinRinJsModule::StopRuntime()`。
 3. 插件释放已加载模块、Inspector、V8 context、isolate、allocator，以及进程级 V8 资源。
 
@@ -159,8 +159,8 @@ if (FModuleManager::Get().IsModuleLoaded("RinRinJs"))
 
     auto LoadResult = Module.LoadJsModule(
         "main",
-        &URinRinGameInstance::resolveModulePath,
-        &URinRinGameInstance::LoadJavascriptFile);
+        &URinRinJsLabGameInstance::resolveModulePath,
+        &URinRinJsLabGameInstance::LoadJavascriptFile);
 
     if (!LoadResult)
     {

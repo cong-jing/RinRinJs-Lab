@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class RinRinGame : ModuleRules
+public class RinRinJsLab : ModuleRules
 {
-	public RinRinGame(ReadOnlyTargetRules Target) : base(Target)
+	public RinRinJsLab(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 

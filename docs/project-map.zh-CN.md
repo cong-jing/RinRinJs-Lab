@@ -1,6 +1,6 @@
 # Project Map
 
-本文档说明 `RinRinGame` 以及 `RinRinJs` 插件的主要源码结构、分层方式和依赖流向。
+本文档说明 `RinRinJs-Lab` 以及 `RinRinJs` 插件的主要源码结构、分层方式和依赖流向。
 
 语言版本：
 
@@ -11,26 +11,26 @@
 ## 顶层结构
 
 ```text
-RinRinGame.uproject
-Source/RinRinGame
+RinRinJsLab.uproject
+Source/RinRinJsLab
 Content/Mods/Core
 Plugins/RinRinJs
 ```
 
 职责：
 
-- `RinRinGame.uproject` 定义 Unreal 工程本体
-- `Source/RinRinGame` 是示例游戏模块
+- `RinRinJsLab.uproject` 定义 Unreal 工程本体
+- `Source/RinRinJsLab` 是示例游戏模块
 - `Content/Mods/Core` 保存由运行时加载的 JavaScript 示例
 - `Plugins/RinRinJs` 是嵌入 V8 的 Unreal 插件
 
 ## 游戏模块
 
 ```text
-Source/RinRinGame/
-  RinRinGameInstance.h
-  RinRinGameInstance.cpp
-  RinRinGame.Build.cs
+Source/RinRinJsLab/
+  RinRinJsLabGameInstance.h
+  RinRinJsLabGameInstance.cpp
+  RinRinJsLab.Build.cs
 ```
 
 职责：
@@ -44,7 +44,7 @@ Source/RinRinGame/
 当前依赖关系：
 
 ```text
-RinRinGame.Build.cs
+RinRinJsLab.Build.cs
   -> PrivateDependencyModuleNames
     -> RinRinJs
 ```
@@ -269,7 +269,7 @@ Plugins/RinRinJs/ThirdParty/ChakraCore
 ## 总体依赖流向
 
 ```text
-RinRinGame GameInstance
+RinRinJsLab GameInstance
   -> FRinRinJsModule
     -> FV8Runtime
       -> V8 process/platform

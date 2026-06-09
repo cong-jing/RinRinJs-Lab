@@ -1,6 +1,6 @@
 # Project Map
 
-この文書では、`RinRinGame` と `RinRinJs` プラグインの主なソース構成、レイヤー分割、依存関係の流れを説明します。
+この文書では、`RinRinJs-Lab` と `RinRinJs` プラグインの主なソース構成、レイヤー分割、依存関係の流れを説明します。
 
 言語版:
 
@@ -11,26 +11,26 @@
 ## トップレベル構成
 
 ```text
-RinRinGame.uproject
-Source/RinRinGame
+RinRinJsLab.uproject
+Source/RinRinJsLab
 Content/Mods/Core
 Plugins/RinRinJs
 ```
 
 役割:
 
-- `RinRinGame.uproject` は Unreal プロジェクト本体を定義する
-- `Source/RinRinGame` はサンプルゲームモジュールを含む
+- `RinRinJsLab.uproject` は Unreal プロジェクト本体を定義する
+- `Source/RinRinJsLab` はサンプルゲームモジュールを含む
 - `Content/Mods/Core` はランタイムが読み込む JavaScript サンプルを含む
 - `Plugins/RinRinJs` は V8 を組み込む Unreal プラグイン本体
 
 ## ゲームモジュール
 
 ```text
-Source/RinRinGame/
-  RinRinGameInstance.h
-  RinRinGameInstance.cpp
-  RinRinGame.Build.cs
+Source/RinRinJsLab/
+  RinRinJsLabGameInstance.h
+  RinRinJsLabGameInstance.cpp
+  RinRinJsLab.Build.cs
 ```
 
 役割:
@@ -44,7 +44,7 @@ Source/RinRinGame/
 現在の依存:
 
 ```text
-RinRinGame.Build.cs
+RinRinJsLab.Build.cs
   -> PrivateDependencyModuleNames
     -> RinRinJs
 ```
@@ -269,7 +269,7 @@ Plugins/RinRinJs/ThirdParty/ChakraCore
 ## 全体の依存フロー
 
 ```text
-RinRinGame GameInstance
+RinRinJsLab GameInstance
   -> FRinRinJsModule
     -> FV8Runtime
       -> V8 process/platform

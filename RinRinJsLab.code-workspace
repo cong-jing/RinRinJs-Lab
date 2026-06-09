@@ -1,7 +1,7 @@
 {
 	"folders": [
 		{
-			"name": "RinRinGame",
+			"name": "RinRinJsLab",
 			"path": "."
 		},
 		{
@@ -30,14 +30,14 @@
 		"version": "2.0.0",
 		"tasks": [
 			{
-				"label": "RinRinGame Win64 Debug Build",
+				"label": "RinRinJsLab Win64 Debug Build",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Debug",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -47,19 +47,19 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Debug Rebuild",
+				"label": "RinRinJsLab Win64 Debug Rebuild",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Debug",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
 				"dependsOn": [
-					"RinRinGame Win64 Debug Clean"
+					"RinRinJsLab Win64 Debug Clean"
 				],
 				"type": "shell",
 				"options": {
@@ -67,14 +67,14 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Debug Clean",
+				"label": "RinRinJsLab Win64 Debug Clean",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Debug",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -84,14 +84,14 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 DebugGame Build",
+				"label": "RinRinJsLab Win64 DebugGame Build",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"DebugGame",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -101,19 +101,19 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 DebugGame Rebuild",
+				"label": "RinRinJsLab Win64 DebugGame Rebuild",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"DebugGame",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
 				"dependsOn": [
-					"RinRinGame Win64 DebugGame Clean"
+					"RinRinJsLab Win64 DebugGame Clean"
 				],
 				"type": "shell",
 				"options": {
@@ -121,14 +121,14 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 DebugGame Clean",
+				"label": "RinRinJsLab Win64 DebugGame Clean",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"DebugGame",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -138,14 +138,14 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Development Build",
+				"label": "RinRinJsLab Win64 Development Build",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Development",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -155,19 +155,19 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Development Rebuild",
+				"label": "RinRinJsLab Win64 Development Rebuild",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Development",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
 				"dependsOn": [
-					"RinRinGame Win64 Development Clean"
+					"RinRinJsLab Win64 Development Clean"
 				],
 				"type": "shell",
 				"options": {
@@ -175,14 +175,14 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Development Clean",
+				"label": "RinRinJsLab Win64 Development Clean",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Development",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -192,14 +192,14 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Test Build",
+				"label": "RinRinJsLab Win64 Test Build",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Test",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -209,19 +209,19 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Test Rebuild",
+				"label": "RinRinJsLab Win64 Test Rebuild",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Test",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
 				"dependsOn": [
-					"RinRinGame Win64 Test Clean"
+					"RinRinJsLab Win64 Test Clean"
 				],
 				"type": "shell",
 				"options": {
@@ -229,14 +229,14 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Test Clean",
+				"label": "RinRinJsLab Win64 Test Clean",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Test",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -246,14 +246,14 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Shipping Build",
+				"label": "RinRinJsLab Win64 Shipping Build",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Shipping",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -263,19 +263,19 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Shipping Rebuild",
+				"label": "RinRinJsLab Win64 Shipping Rebuild",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Shipping",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
 				"dependsOn": [
-					"RinRinGame Win64 Shipping Clean"
+					"RinRinJsLab Win64 Shipping Clean"
 				],
 				"type": "shell",
 				"options": {
@@ -283,14 +283,14 @@
 				}
 			},
 			{
-				"label": "RinRinGame Win64 Shipping Clean",
+				"label": "RinRinJsLab Win64 Shipping Clean",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
 				"args": [
-					"RinRinGame",
+					"RinRinJsLab",
 					"Win64",
 					"Shipping",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -300,14 +300,14 @@
 				}
 			},
 			{
-				"label": "RinRinGameEditor Win64 Debug Build",
+				"label": "RinRinJsLabEditor Win64 Debug Build",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGameEditor",
+					"RinRinJsLabEditor",
 					"Win64",
 					"Debug",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -317,19 +317,19 @@
 				}
 			},
 			{
-				"label": "RinRinGameEditor Win64 Debug Rebuild",
+				"label": "RinRinJsLabEditor Win64 Debug Rebuild",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGameEditor",
+					"RinRinJsLabEditor",
 					"Win64",
 					"Debug",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
 				"dependsOn": [
-					"RinRinGameEditor Win64 Debug Clean"
+					"RinRinJsLabEditor Win64 Debug Clean"
 				],
 				"type": "shell",
 				"options": {
@@ -337,14 +337,14 @@
 				}
 			},
 			{
-				"label": "RinRinGameEditor Win64 Debug Clean",
+				"label": "RinRinJsLabEditor Win64 Debug Clean",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
 				"args": [
-					"RinRinGameEditor",
+					"RinRinJsLabEditor",
 					"Win64",
 					"Debug",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -354,14 +354,14 @@
 				}
 			},
 			{
-				"label": "RinRinGameEditor Win64 DebugGame Build",
+				"label": "RinRinJsLabEditor Win64 DebugGame Build",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGameEditor",
+					"RinRinJsLabEditor",
 					"Win64",
 					"DebugGame",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -371,19 +371,19 @@
 				}
 			},
 			{
-				"label": "RinRinGameEditor Win64 DebugGame Rebuild",
+				"label": "RinRinJsLabEditor Win64 DebugGame Rebuild",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGameEditor",
+					"RinRinJsLabEditor",
 					"Win64",
 					"DebugGame",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
 				"dependsOn": [
-					"RinRinGameEditor Win64 DebugGame Clean"
+					"RinRinJsLabEditor Win64 DebugGame Clean"
 				],
 				"type": "shell",
 				"options": {
@@ -391,14 +391,14 @@
 				}
 			},
 			{
-				"label": "RinRinGameEditor Win64 DebugGame Clean",
+				"label": "RinRinJsLabEditor Win64 DebugGame Clean",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
 				"args": [
-					"RinRinGameEditor",
+					"RinRinJsLabEditor",
 					"Win64",
 					"DebugGame",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -408,14 +408,14 @@
 				}
 			},
 			{
-				"label": "RinRinGameEditor Win64 Development Build",
+				"label": "RinRinJsLabEditor Win64 Development Build",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGameEditor",
+					"RinRinJsLabEditor",
 					"Win64",
 					"Development",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -425,19 +425,19 @@
 				}
 			},
 			{
-				"label": "RinRinGameEditor Win64 Development Rebuild",
+				"label": "RinRinJsLabEditor Win64 Development Rebuild",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"RinRinGameEditor",
+					"RinRinJsLabEditor",
 					"Win64",
 					"Development",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
 				"dependsOn": [
-					"RinRinGameEditor Win64 Development Clean"
+					"RinRinJsLabEditor Win64 Development Clean"
 				],
 				"type": "shell",
 				"options": {
@@ -445,14 +445,14 @@
 				}
 			},
 			{
-				"label": "RinRinGameEditor Win64 Development Clean",
+				"label": "RinRinJsLabEditor Win64 Development Clean",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
 				"args": [
-					"RinRinGameEditor",
+					"RinRinJsLabEditor",
 					"Win64",
 					"Development",
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-waitmutex"
 				],
 				"problemMatcher": "$msCompile",
@@ -467,10 +467,10 @@
 		"version": "0.2.0",
 		"configurations": [
 			{
-				"name": "Launch RinRinGame (Debug)",
+				"name": "Launch RinRinJsLab (Debug)",
 				"request": "launch",
 				"program": "C:\\Develop\\RinRinGame\\Binaries\\Win64\\UnrealGame-Win64-Debug.exe",
-				"preLaunchTask": "RinRinGame Win64 Debug Build",
+				"preLaunchTask": "RinRinJsLab Win64 Debug Build",
 				"args": [
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.7",
@@ -483,10 +483,10 @@
 				}
 			},
 			{
-				"name": "Launch RinRinGame (DebugGame)",
+				"name": "Launch RinRinJsLab (DebugGame)",
 				"request": "launch",
 				"program": "C:\\Develop\\RinRinGame\\Binaries\\Win64\\UnrealGame-Win64-DebugGame.exe",
-				"preLaunchTask": "RinRinGame Win64 DebugGame Build",
+				"preLaunchTask": "RinRinJsLab Win64 DebugGame Build",
 				"args": [
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.7",
@@ -499,10 +499,10 @@
 				}
 			},
 			{
-				"name": "Launch RinRinGame (Development)",
+				"name": "Launch RinRinJsLab (Development)",
 				"request": "launch",
 				"program": "C:\\Develop\\RinRinGame\\Binaries\\Win64\\UnrealGame.exe",
-				"preLaunchTask": "RinRinGame Win64 Development Build",
+				"preLaunchTask": "RinRinJsLab Win64 Development Build",
 				"args": [
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.7",
@@ -515,10 +515,10 @@
 				}
 			},
 			{
-				"name": "Launch RinRinGame (Test)",
+				"name": "Launch RinRinJsLab (Test)",
 				"request": "launch",
 				"program": "C:\\Develop\\RinRinGame\\Binaries\\Win64\\UnrealGame-Win64-Test.exe",
-				"preLaunchTask": "RinRinGame Win64 Test Build",
+				"preLaunchTask": "RinRinJsLab Win64 Test Build",
 				"args": [
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.7",
@@ -531,10 +531,10 @@
 				}
 			},
 			{
-				"name": "Launch RinRinGame (Shipping)",
+				"name": "Launch RinRinJsLab (Shipping)",
 				"request": "launch",
 				"program": "C:\\Develop\\RinRinGame\\Binaries\\Win64\\UnrealGame-Win64-Shipping.exe",
-				"preLaunchTask": "RinRinGame Win64 Shipping Build",
+				"preLaunchTask": "RinRinJsLab Win64 Shipping Build",
 				"args": [
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.7",
@@ -547,12 +547,12 @@
 				}
 			},
 			{
-				"name": "Launch RinRinGameEditor (Debug)",
+				"name": "Launch RinRinJsLabEditor (Debug)",
 				"request": "launch",
 				"program": "C:\\Program Files\\Epic Games\\UE_5.7\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-Debug.exe",
-				"preLaunchTask": "RinRinGameEditor Win64 Debug Build",
+				"preLaunchTask": "RinRinJsLabEditor Win64 Debug Build",
 				"args": [
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject"
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject"
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.7",
 				"stopAtEntry": false,
@@ -564,12 +564,12 @@
 				}
 			},
 			{
-				"name": "Launch RinRinGameEditor (DebugGame)",
+				"name": "Launch RinRinJsLabEditor (DebugGame)",
 				"request": "launch",
 				"program": "C:\\Program Files\\Epic Games\\UE_5.7\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-DebugGame.exe",
-				"preLaunchTask": "RinRinGameEditor Win64 DebugGame Build",
+				"preLaunchTask": "RinRinJsLabEditor Win64 DebugGame Build",
 				"args": [
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject"
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject"
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.7",
 				"stopAtEntry": false,
@@ -581,12 +581,12 @@
 				}
 			},
 			{
-				"name": "Launch RinRinGameEditor (Development)",
+				"name": "Launch RinRinJsLabEditor (Development)",
 				"request": "launch",
 				"program": "C:\\Program Files\\Epic Games\\UE_5.7\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
-				"preLaunchTask": "RinRinGameEditor Win64 Development Build",
+				"preLaunchTask": "RinRinJsLabEditor Win64 Development Build",
 				"args": [
-					"C:\\Develop\\RinRinGame\\RinRinGame.uproject"
+					"C:\\Develop\\RinRinGame\\RinRinJsLab.uproject"
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.7",
 				"stopAtEntry": false,
@@ -606,7 +606,7 @@
 				"args": [
 					"-projectfiles",
 					"-vscode",
-					"-project=C:\\Develop\\RinRinGame\\RinRinGame.uproject",
+					"-project=C:\\Develop\\RinRinGame\\RinRinJsLab.uproject",
 					"-game",
 					"-engine",
 					"-dotnet"

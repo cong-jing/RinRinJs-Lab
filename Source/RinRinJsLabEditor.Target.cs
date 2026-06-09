@@ -3,13 +3,13 @@
 using UnrealBuildTool;
 using System.Collections.Generic;
 
-public class RinRinGameTarget : TargetRules
+public class RinRinJsLabEditorTarget : TargetRules
 {
-	public RinRinGameTarget(TargetInfo Target) : base(Target)
+	public RinRinJsLabEditorTarget(TargetInfo Target) : base(Target)
 	{
-		Type = TargetType.Game;
+		Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V6;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
-		ExtraModuleNames.Add("RinRinGame");
+		ExtraModuleNames.Add("RinRinJsLab");
 	}
 }

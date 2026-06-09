@@ -1,18 +1,18 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "RinRinGameInstance.h"
+#include "RinRinJsLabGameInstance.h"
 #include "Logging/LogMacros.h"
 #include "Modules/ModuleManager.h"
 #include "RinRinJs.h"
 #include <string>
 #include <string_view>
 
-void URinRinGameInstance::Init()
+void URinRinJsLabGameInstance::Init()
 {
 	Super::Init();
 	// Custom initialization code can be added here
 
-	UE_LOG(LogTemp, Log, TEXT("RinRinGameInstance initialized"));
+	UE_LOG(LogTemp, Log, TEXT("RinRinJsLabGameInstance initialized"));
 
 	// Get the JsRuntime module and initialize it
 	if (FModuleManager::Get().IsModuleLoaded("RinRinJs"))
@@ -21,8 +21,8 @@ void URinRinGameInstance::Init()
 
 		module.StartRuntime();
 		auto loadResult = module.LoadJsModule("main", // Resolve module ID callback
-											  &URinRinGameInstance::resolveModulePath,
-											  &URinRinGameInstance::LoadJavascriptFile);
+											  &URinRinJsLabGameInstance::resolveModulePath,
+											  &URinRinJsLabGameInstance::LoadJavascriptFile);
 
 		if (!loadResult)
 		{
@@ -41,9 +41,9 @@ void URinRinGameInstance::Init()
 	}
 }
 
-void URinRinGameInstance::Shutdown()
+void URinRinJsLabGameInstance::Shutdown()
 {
-	UE_LOG(LogTemp, Log, TEXT("RinRinGameInstance shutting down"));
+	UE_LOG(LogTemp, Log, TEXT("RinRinJsLabGameInstance shutting down"));
 
 	if (FModuleManager::Get().IsModuleLoaded("RinRinJs"))
 	{
@@ -54,8 +54,8 @@ void URinRinGameInstance::Shutdown()
 	Super::Shutdown();
 }
 
-bool URinRinGameInstance::resolveModulePath(std::string_view ReferrerResolvedId, std::string_view RequestSpecifier,
-											std::string &OutResolvedModuleId, std::string &OutError)
+bool URinRinJsLabGameInstance::resolveModulePath(std::string_view ReferrerResolvedId, std::string_view RequestSpecifier,
+												 std::string &OutResolvedModuleId, std::string &OutError)
 {
 	FString resolved;
 	if (RequestSpecifier == "main")
@@ -76,8 +76,8 @@ bool URinRinGameInstance::resolveModulePath(std::string_view ReferrerResolvedId,
 	return true;
 }
 
-bool URinRinGameInstance::LoadJavascriptFile(std::string_view ResolvedModuleId, std::string &OutSourceUtf8,
-											 std::string &OutError)
+bool URinRinJsLabGameInstance::LoadJavascriptFile(std::string_view ResolvedModuleId, std::string &OutSourceUtf8,
+												  std::string &OutError)
 {
 	// 1) UTF-8 view -> FString（不要求 NUL 结尾，不需要额外拷贝）
 	FUTF8ToTCHAR Conv(ResolvedModuleId.data(), (int32)ResolvedModuleId.size());

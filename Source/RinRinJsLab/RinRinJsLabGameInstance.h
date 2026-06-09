@@ -6,13 +6,13 @@
 #include "Engine/GameInstance.h"
 #include <string>
 
-#include "RinRinGameInstance.generated.h"
+#include "RinRinJsLabGameInstance.generated.h"
 
 /**
  *
  */
 UCLASS()
-class RINRINGAME_API URinRinGameInstance : public UGameInstance
+class RINRINJSLAB_API URinRinJsLabGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 

@@ -2,6 +2,9 @@
 
 #include "RinRinJs.h"
 #include "Util/Log.h"
+#include "Runtime/ScriptHost.h"
+
+#include "HAL/IConsoleManager.h"
 #include "Modules/ModuleManager.h"
 #if RinRinJs_USE_V8
 #include "V8/V8Loader.h"
@@ -12,23 +15,42 @@ using rinrin::uejs::FV8Loader;
 
 DEFINE_LOG_CATEGORY(LogJs)
 
+FRinRinJsModule::FRinRinJsModule() = default;
+FRinRinJsModule::~FRinRinJsModule() = default;
+
 void FRinRinJsModule::StartupModule()
 {
-	UE_SET_LOG_VERBOSITY(LogJs, VeryVerbose);
+	// ELogVerbosity
+	UE_SET_LOG_VERBOSITY(LogJs, Verbose);
 	UE_SET_LOG_VERBOSITY(LogJsInspector, Verbose);
 #if RinRinJs_USE_V8
 	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.EnsureV8ProcessInitialized();
 #else
 #endif
+
+	RegisterConsoleCommands();
 }
 void FRinRinJsModule::ShutdownModule()
 {
+	UnregisterConsoleCommands();
+
+	if (ScriptHost)
+	{
+		ScriptHost->Unload();
+	}
+
 #if RinRinJs_USE_V8
 	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.FinalizeV8Process();
 #else
 #endif
+
+	if (ScriptHost)
+	{
+		ScriptHost->ReleaseNativeStateAfterContextDestroyed();
+		ScriptHost.reset();
+	}
 }
 
 void FRinRinJsModule::StartRuntime()
@@ -39,26 +61,9 @@ void FRinRinJsModule::StartRuntime()
 	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.CreateExecutionContext();
 
-	// Test JavaScript execution
 	if (V8Loader.IsContextCreated())
 	{
 		UEJS_LOG(LogJs, Log, "Using V8 JavaScript Engine");
-
-		// Execute the hello world script
-		FString TestScript = TEXT("'Hello from V8, ' + (1 + 2)");
-		{
-			FTCHARToUTF8 Conv(*TestScript);
-			std::string Result = V8Loader.ExecuteJavaScript(std::string_view(Conv.Get(), Conv.Length()));
-			UEJS_LOG(LogJs, Log, "JavaScript Test Result: {}", Result);
-		}
-
-		// Execute another test script
-		FString MathScript = TEXT("(() => { return 2 + 2; })()");
-		{
-			FTCHARToUTF8 Conv(*MathScript);
-			std::string MathResult = V8Loader.ExecuteJavaScript(std::string_view(Conv.Get(), Conv.Length()));
-			UEJS_LOG(LogJs, Log, "JavaScript Math Test Result: {}", MathResult);
-		}
 	}
 	else
 	{
@@ -68,45 +73,51 @@ void FRinRinJsModule::StartRuntime()
 	// Initialize ChakraCore through ChakraCoreLoader module
 	FChakraCoreLoaderModule &ChakraCoreLoader = FModuleManager::LoadModuleChecked<FChakraCoreLoaderModule>("ChakraCoreLoader");
 	ChakraCoreLoader.InitializeChakraCore();
-
-	// Test JavaScript execution
 	if (ChakraCoreLoader.IsChakraCoreLoaded())
 	{
 		UEJS_LOG(LogJs, Log, "Using ChakraCore JavaScript Engine");
-
-		// Execute the hello world script from the official example
-		FString TestScript = TEXT("(()=>{return 'Hello world!';})()");
-		FString Result = ChakraCoreLoader.ExecuteJavaScript(TestScript);
-		UEJS_LOG(LogJs, Log, "JavaScript Test Result: {}", TCHAR_TO_UTF8(*Result));
-
-		// Execute another test script
-		FString MathScript = TEXT("(()=>{return 2 + 2;})()");
-		FString MathResult = ChakraCoreLoader.ExecuteJavaScript(MathScript);
-		UEJS_LOG(LogJs, Log, "JavaScript Math Test Result: {}", TCHAR_TO_UTF8(*MathResult));
 	}
 	else
 	{
 		UEJS_LOG(LogJs, Error, "ChakraCore is not loaded, cannot execute JavaScript");
 	}
 #endif
+
+	if (!ScriptHost)
+	{
+		ScriptHost = std::make_unique<rinrin::uejs::FScriptHost>();
+	}
+
 	UEJS_LOG(LogJs, Log, "RinRinJs module started");
 }
 
 void FRinRinJsModule::StopRuntime()
 {
-	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
-	// we call this function before unloading the module.
+	if (ScriptHost)
+	{
+		ScriptHost->Unload();
+	}
 
 #if RinRinJs_USE_V8
 	// Shutdown V8 through V8Loader module
 	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.DestroyExecutionContext();
+	if (ScriptHost)
+	{
+		ScriptHost->ReleaseNativeStateAfterContextDestroyed();
+		ScriptHost.reset();
+	}
 #else
 	// Shutdown ChakraCore through ChakraCoreLoader module
 	if (FModuleManager::Get().IsModuleLoaded("ChakraCoreLoader"))
 	{
 		FChakraCoreLoaderModule &ChakraCoreLoader = FModuleManager::GetModuleChecked<FChakraCoreLoaderModule>("ChakraCoreLoader");
 		ChakraCoreLoader.ShutdownChakraCore();
+	}
+	if (ScriptHost)
+	{
+		ScriptHost->ReleaseNativeStateAfterContextDestroyed();
+		ScriptHost.reset();
 	}
 #endif
 	UEJS_LOG(LogJs, Log, "RinRinJs module shutdown");
@@ -128,6 +139,83 @@ rinrin::uejs::TExpected<void> FRinRinJsModule::EvaluateString(const std::string_
 	std::string Result = V8Loader.ExecuteJavaScript(ScriptUtf8);
 	UEJS_LOG(LogJs, Log, "EvaluateString result: {}", Result);
 	return rinrin::uejs::TExpected<void>();
+}
+
+void FRinRinJsModule::SetGameWorld(UWorld *World)
+{
+	if (!ScriptHost)
+	{
+		ScriptHost = std::make_unique<rinrin::uejs::FScriptHost>();
+	}
+	ScriptHost->SetWorld(World);
+}
+
+rinrin::uejs::TExpected<void> FRinRinJsModule::LoadScriptPackage(const FString &PackageRootAbs)
+{
+	if (!ScriptHost)
+	{
+		ScriptHost = std::make_unique<rinrin::uejs::FScriptHost>();
+	}
+	return ScriptHost->LoadPackage(PackageRootAbs);
+}
+
+void FRinRinJsModule::UnloadScriptPackage()
+{
+	if (ScriptHost)
+	{
+		ScriptHost->Unload();
+	}
+}
+
+rinrin::uejs::TExpected<void> FRinRinJsModule::ReloadScriptPackage()
+{
+	if (!ScriptHost)
+	{
+		return rinrin::uejs::Err(rinrin::uejs::FError(
+			"ReloadScriptPackage: no script host (call LoadScriptPackage first).", UEJS_HERE));
+	}
+	return ScriptHost->Reload();
+}
+
+void FRinRinJsModule::TickRuntime(float DeltaSeconds)
+{
+	if (ScriptHost)
+	{
+		ScriptHost->Tick(DeltaSeconds);
+	}
+}
+
+void FRinRinJsModule::RegisterConsoleCommands()
+{
+	if (ReloadCommand)
+		return;
+
+	ReloadCommand = IConsoleManager::Get().RegisterConsoleCommand(
+		TEXT("RinRinJs.Reload"),
+		TEXT("Reload the active JavaScript script package: dispose -> rebuild V8 context -> reload main module -> start."),
+		FConsoleCommandDelegate::CreateLambda([this]()
+											  {
+			UEJS_LOG(LogJs, Log, "RinRinJs.Reload: reload requested");
+			auto r = this->ReloadScriptPackage();
+			if (!r)
+			{
+				r.Error().Log(LogJs, ELogVerbosity::Error);
+				UEJS_LOG(LogJs, Error, "RinRinJs.Reload: failed");
+			}
+			else
+			{
+				UEJS_LOG(LogJs, Log, "RinRinJs.Reload: success");
+			} }),
+		ECVF_Default);
+}
+
+void FRinRinJsModule::UnregisterConsoleCommands()
+{
+	if (ReloadCommand)
+	{
+		IConsoleManager::Get().UnregisterConsoleObject(ReloadCommand);
+		ReloadCommand = nullptr;
+	}
 }
 
 IMPLEMENT_MODULE(FRinRinJsModule, RinRinJs)

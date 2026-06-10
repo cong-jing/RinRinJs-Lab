@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Containers/Ticker.h"
 #include "Engine/GameInstance.h"
-#include <string>
 
 #include "RinRinJsLabGameInstance.generated.h"
 
@@ -21,6 +21,9 @@ public:
 	virtual void Shutdown() override;
 
 private:
-	static bool resolveModulePath(std::string_view ReferrerResolvedId, std::string_view RequestSpecifier, std::string &OutResolvedModuleId, std::string &OutError);
-	static bool LoadJavascriptFile(std::string_view ResolvedModuleId, std::string &OutSourceUtf8, std::string &OutError);
+	bool TickScripts(float DeltaSeconds);
+
+	FTSTicker::FDelegateHandle TickHandle;
+	bool bPackageLoadAttempted = false;
+	bool bPackageLoaded = false;
 };

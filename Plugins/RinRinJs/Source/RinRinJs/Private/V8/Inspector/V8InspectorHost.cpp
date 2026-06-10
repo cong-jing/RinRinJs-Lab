@@ -124,14 +124,12 @@ namespace rinrin::uejs::inspector
             Client->quitMessageLoopOnPause(); // 你自己实现：把 bPausedLoop=false
         }
 
-        UEJS_LOG(LogJsInspector, Log, "Destroying V8 Inspector Host 2222");
         if (Isolate)
         {
             v8::Locker locker(Isolate);
             v8::Isolate::Scope isolate_scope(Isolate);
             v8::HandleScope handle_scope(Isolate);
 
-            UEJS_LOG(LogJsInspector, Log, "Destroying V8 Inspector Host 3333");
             if (Session)
             {
                 Session->stop(); // 进入 shutdown mode
@@ -144,10 +142,8 @@ namespace rinrin::uejs::inspector
         }
         else
         {
-            UEJS_LOG(LogJsInspector, Log, "Destroying V8 Inspector Host 4444");
             Session.reset();
         }
-        UEJS_LOG(LogJsInspector, Log, "Destroying V8 Inspector Host 5555");
 
         DefaultContext.Reset();
         Inspector.reset();

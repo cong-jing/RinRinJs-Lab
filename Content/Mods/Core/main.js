@@ -1,13 +1,59 @@
-import { bar } from './utils.js';
+// Script package entry: spawn a cube and orbit it.
+// Edit constants below and run `RinRinJs.Reload` in the UE console to see
+// the change without restarting the editor.
 
-function foo(a, b) {
-    let x = bar(b);
-    console.log('In foo: bar(', b, ')=', x);
-    return a + bar(x);
+const RADIUS = 300;
+const SPEED = 3;
+const HEIGHT_AMPLITUDE = 80;
+const ROTATION_SPEED = 90;
+const BASE_HEIGHT = 120;
+
+let actor = 0;
+let time = 0;
+
+// The start function is called when the script package is loaded.
+// We spawn a cube actor and keep a reference to it. 
+export function start(context) {
+    time = 0;
+    ue.log("[demo] start", JSON.stringify(context));
+
+    actor = ue.spawnActorByPath("/Engine/BasicShapes/Cube.Cube", {
+        location: { x: RADIUS, y: 0, z: BASE_HEIGHT },
+        rotation: { pitch: 0, yaw: 0, roll: 0 },
+        scale: { x: 1, y: 1, z: 1 },
+    });
+
+    if (!actor) {
+        ue.log("[demo] failed to spawn actor");
+    } else {
+        ue.log("[demo] spawned actor handle=", actor);
+    }
 }
 
-console.log('In main.js: foo(1,2)=', foo(1, 2));
+// The tick function is called every frame with the delta time in seconds since the last tick.
+// We update the actor's location and rotation to make it orbit around the origin.
+export function tick(deltaSeconds) {
+    if (!actor) return;
+    time += deltaSeconds;
 
-globalThis.foo = foo;
+    const angle = time * SPEED;
+    ue.setLocation(actor, {
+        x: Math.cos(angle) * RADIUS,
+        y: Math.sin(angle) * RADIUS,
+        z: BASE_HEIGHT + Math.sin(angle * 2) * HEIGHT_AMPLITUDE,
+    });
 
-export { foo, bar };
+    ue.setRotation(actor, {
+        pitch: 0,
+        yaw: time * ROTATION_SPEED,
+        roll: 0,
+    });
+}
+
+export function dispose() {
+    ue.log("[demo] dispose");
+    if (actor) {
+        ue.destroy(actor);
+        actor = 0;
+    }
+}

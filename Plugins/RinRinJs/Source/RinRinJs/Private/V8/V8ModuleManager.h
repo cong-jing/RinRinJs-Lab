@@ -39,6 +39,12 @@ namespace rinrin::uejs
                                         std::span<v8::Local<v8::Value>> Args,
                                         v8::Local<v8::Value> &OutResult);
 
+        /** Returns true if the module exists and exports the named symbol as a function. */
+        bool HasExportedFunction(std::string_view ModuleId, std::string_view FunctionName) const;
+
+        v8::Isolate *GetIsolate() const { return Isolate; }
+        v8::Local<v8::Context> GetContext() const { return Context.Get(Isolate); }
+
         void UnloadAll();
 
     private:

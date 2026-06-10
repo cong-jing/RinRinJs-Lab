@@ -59,6 +59,21 @@ namespace rinrin::uejs
 									 FResolveModuleIdFn InResolve,
 									 FLoadSourceByModuleIdFn InLoadSource);
 
+		/** Access to the V8 isolate (valid only when context created). */
+		v8::Isolate *GetIsolate() const { return V8Isolate.get(); }
+
+		/** Access to the active context (returns empty handle if not created). */
+		v8::Local<v8::Context> GetContext() const
+		{
+			return V8ContextGlobal.IsEmpty() ? v8::Local<v8::Context>() : V8ContextGlobal.Get(V8Isolate.get());
+		}
+
+		/** Access the underlying module manager (created lazily inside LoadJsModule). May be null. */
+		FV8ModuleManager *GetModuleManager() const { return JsModuleManager.get(); }
+
+		/** Create the module manager up-front (so callers can inject globals before the first module is loaded). */
+		void EnsureModuleManager();
+
 	private:
 		FV8Loader();
 		~FV8Loader();

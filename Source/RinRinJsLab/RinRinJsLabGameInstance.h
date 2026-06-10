@@ -20,10 +20,10 @@ public:
 	virtual void Init() override;
 	virtual void Shutdown() override;
 
-	virtual void OnWorldChanged(UWorld *OldWorld, UWorld *NewWorld) override;
-
 private:
 	bool TickScripts(float DeltaSeconds);
 
 	FTSTicker::FDelegateHandle TickHandle;
+	bool bPackageLoadAttempted = false;
+	bool bPackageLoaded = false;
 };

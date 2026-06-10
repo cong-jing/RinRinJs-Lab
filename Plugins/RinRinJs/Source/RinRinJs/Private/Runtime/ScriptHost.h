@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/WeakObjectPtr.h"
 
 #include "ScriptManifest.h"
 #include "Util/Expected.h"
@@ -87,7 +86,7 @@ namespace rinrin::uejs
         std::unique_ptr<FNativeBridge> Bridge;
         std::unique_ptr<FActorHandleRegistry> ActorRegistry;
 
-        TWeakObjectPtr<UWorld> WorldPtr;
+        UWorld *WorldPtr = nullptr;
 
         FString CurrentPackageRoot;
         FScriptManifest CurrentManifest;

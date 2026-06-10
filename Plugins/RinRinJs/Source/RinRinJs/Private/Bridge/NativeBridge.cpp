@@ -344,6 +344,10 @@ namespace rinrin::uejs
 
         FActorSpawnParameters spawnParams;
         spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        spawnParams.Name = MakeUniqueObjectName(
+            world,
+            AStaticMeshActor::StaticClass(),
+            TEXT("RinRinJsDemoActor"));
 
         AStaticMeshActor *actor = world->SpawnActor<AStaticMeshActor>(
             AStaticMeshActor::StaticClass(),
@@ -361,6 +365,9 @@ namespace rinrin::uejs
             smc->SetStaticMesh(mesh);
         }
         actor->SetActorScale3D(transform.GetScale3D());
+#if WITH_EDITOR
+        actor->SetActorLabel(TEXT("RinRinJsDemoActor"));
+#endif
 
         const FActorHandleRegistry::FHandle handle = registry->Register(actor);
         Args.GetReturnValue().Set(v8::Integer::New(isolate, handle));

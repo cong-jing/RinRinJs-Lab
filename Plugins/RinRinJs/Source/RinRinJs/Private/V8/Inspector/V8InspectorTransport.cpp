@@ -116,27 +116,23 @@ namespace rinrin::uejs::inspector
     {
         bStopping = true;
 
-        UEJS_LOG(LogJsInspector, Log, "FV8InspectorTransport Stop 1111");
         {
             std::lock_guard<std::mutex> Lock(ConnMutex);
             ActiveConn.store(nullptr);
             bClientSlotTaken.store(false);
         }
 
-        UEJS_LOG(LogJsInspector, Log, "FV8InspectorTransport Stop 2222");
         if (Ctx)
         {
             mg_stop(Ctx);
             Ctx = nullptr;
         }
 
-        UEJS_LOG(LogJsInspector, Log, "FV8InspectorTransport Stop 3333");
         if (bLibraryInitialized)
         {
             mg_exit_library();
             bLibraryInitialized = false;
         }
-        UEJS_LOG(LogJsInspector, Log, "FV8InspectorTransport Stop 4444");
     }
 
     void FV8InspectorTransport::SetOnConnected(std::function<void()> Fn)

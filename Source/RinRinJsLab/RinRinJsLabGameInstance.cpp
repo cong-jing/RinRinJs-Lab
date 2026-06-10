@@ -34,15 +34,8 @@ void URinRinJsLabGameInstance::Init()
 	FRinRinJsModule &module = FModuleManager::GetModuleChecked<FRinRinJsModule>("RinRinJs");
 	module.StartRuntime();
 	module.SetGameWorld(GetWorld());
-
-	const FString packageRoot = GetDemoPackageRoot();
-	UE_LOG(LogTemp, Log, TEXT("Loading JS script package from: %s"), *packageRoot);
-
-	auto loadResult = module.LoadScriptPackage(packageRoot);
-	if (!loadResult)
-	{
-		loadResult.Error().Log(LogTemp, ELogVerbosity::Error);
-	}
+	bPackageLoadAttempted = false;
+	bPackageLoaded = false;
 
 	// Per-frame tick driver. The Inspector uses its own FTSTicker for message pumping,
 	// so we register a separate ticker here just for JS lifecycle tick(dt).
@@ -67,19 +60,10 @@ void URinRinJsLabGameInstance::Shutdown()
 		JsModule.SetGameWorld(nullptr);
 		JsModule.StopRuntime();
 	}
+	bPackageLoaded = false;
+	bPackageLoadAttempted = false;
 
 	Super::Shutdown();
-}
-
-void URinRinJsLabGameInstance::OnWorldChanged(UWorld *OldWorld, UWorld *NewWorld)
-{
-	Super::OnWorldChanged(OldWorld, NewWorld);
-
-	if (FModuleManager::Get().IsModuleLoaded("RinRinJs"))
-	{
-		FRinRinJsModule &JsModule = FModuleManager::GetModuleChecked<FRinRinJsModule>("RinRinJs");
-		JsModule.SetGameWorld(NewWorld);
-	}
 }
 
 bool URinRinJsLabGameInstance::TickScripts(float DeltaSeconds)
@@ -87,7 +71,33 @@ bool URinRinJsLabGameInstance::TickScripts(float DeltaSeconds)
 	if (FModuleManager::Get().IsModuleLoaded("RinRinJs"))
 	{
 		FRinRinJsModule &JsModule = FModuleManager::GetModuleChecked<FRinRinJsModule>("RinRinJs");
-		JsModule.TickRuntime(DeltaSeconds);
+		UWorld *World = GetWorld();
+		// Refresh the world from a stable game-thread tick rather than world-change
+		// callbacks. That keeps the v0 demo away from teardown/hot-reload edges.
+		JsModule.SetGameWorld(World);
+
+		if (!bPackageLoaded && !bPackageLoadAttempted && World && World->IsGameWorld() && World->HasBegunPlay())
+		{
+			bPackageLoadAttempted = true;
+
+			const FString packageRoot = GetDemoPackageRoot();
+			UE_LOG(LogTemp, Log, TEXT("Loading JS script package from: %s"), *packageRoot);
+
+			auto loadResult = JsModule.LoadScriptPackage(packageRoot);
+			if (!loadResult)
+			{
+				loadResult.Error().Log(LogTemp, ELogVerbosity::Error);
+			}
+			else
+			{
+				bPackageLoaded = true;
+			}
+		}
+
+		if (bPackageLoaded)
+		{
+			JsModule.TickRuntime(DeltaSeconds);
+		}
 	}
 	return true; // keep ticking
 }

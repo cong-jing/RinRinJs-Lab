@@ -49,7 +49,7 @@ namespace rinrin::uejs
 
     UWorld *FScriptHost::GetWorld() const
     {
-        return WorldPtr.Get();
+        return WorldPtr;
     }
 
     bool FScriptHost::ResolveModuleId(std::string_view ReferrerResolvedId,
@@ -159,7 +159,7 @@ namespace rinrin::uejs
         ActorRegistry = std::make_unique<FActorHandleRegistry>();
         Bridge = std::make_unique<FNativeBridge>();
         Bridge->SetActorRegistry(ActorRegistry.get());
-        Bridge->SetWorld(WorldPtr.Get());
+        Bridge->SetWorld(WorldPtr);
 
         // Inject native globals into the V8 context.
         {

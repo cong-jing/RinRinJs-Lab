@@ -20,7 +20,8 @@ FRinRinJsModule::~FRinRinJsModule() = default;
 
 void FRinRinJsModule::StartupModule()
 {
-	UE_SET_LOG_VERBOSITY(LogJs, VeryVerbose);
+	// ELogVerbosity
+	UE_SET_LOG_VERBOSITY(LogJs, Verbose);
 	UE_SET_LOG_VERBOSITY(LogJsInspector, Verbose);
 #if RinRinJs_USE_V8
 	FV8Loader &V8Loader = FV8Loader::Get();

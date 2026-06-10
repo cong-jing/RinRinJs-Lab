@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/WeakObjectPtr.h"
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -27,8 +26,9 @@ namespace rinrin::uejs
      *
      * Lifetime:
      * - Owned by FScriptHost.
-     * - Holds a TWeakObjectPtr<UWorld>; SetWorld() can change which world spawnActor*()
-     *   operates on without rebuilding the V8 context.
+     * - Holds a raw UWorld*; the host is responsible for refreshing it at safe points
+     *   and clearing it on shutdown. For this v0 demo that is simpler and avoids
+     *   weak-object churn during world-change callbacks.
      *
      * Threading: every JS call into UE happens on the game thread, and every UE call
      * into JS likewise. The bridge does not lock.
@@ -43,7 +43,7 @@ namespace rinrin::uejs
         FNativeBridge &operator=(const FNativeBridge &) = delete;
 
         void SetWorld(UWorld *World);
-        UWorld *GetWorld() const { return WorldPtr.Get(); }
+        UWorld *GetWorld() const { return WorldPtr; }
 
         void SetActorRegistry(FActorHandleRegistry *Registry) { ActorRegistry = Registry; }
         FActorHandleRegistry *GetActorRegistry() const { return ActorRegistry; }
@@ -73,7 +73,7 @@ namespace rinrin::uejs
                           const char *Name,
                           v8::FunctionCallback Cb);
 
-        TWeakObjectPtr<UWorld> WorldPtr;
+        UWorld *WorldPtr = nullptr;
         FActorHandleRegistry *ActorRegistry = nullptr;
     };
 

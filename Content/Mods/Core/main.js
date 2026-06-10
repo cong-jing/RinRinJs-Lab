@@ -2,8 +2,8 @@
 // Edit constants below and run `RinRinJs.Reload` in the UE console to see
 // the change without restarting the editor.
 
-const RADIUS = 300;
-const SPEED = 1.2;
+const RADIUS = 200;
+const SPEED = 1;
 const HEIGHT_AMPLITUDE = 80;
 const ROTATION_SPEED = 90;
 const BASE_HEIGHT = 120;

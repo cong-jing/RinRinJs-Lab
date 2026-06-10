@@ -260,7 +260,7 @@ namespace rinrin::uejs
                                                       std::span<v8::Local<v8::Value>> Args,
                                                       v8::Local<v8::Value> &OutResult)
     {
-        UEJS_LOG(LogJs, Verbose,
+        UEJS_LOG(LogJs, VeryVerbose,
                  "ExcuteFunction: ModuleId='{}', FunctionName='{}'",
                  ModuleId,
                  FunctionName);
@@ -286,7 +286,7 @@ namespace rinrin::uejs
         v8::Local<v8::Module> foundedModule = it->second.Get(isolate);
 
         auto status = foundedModule->GetStatus();
-        UEJS_LOG(LogJs, Verbose, "ExcuteFunction: module status={}", (int)status);
+        UEJS_LOG(LogJs, VeryVerbose, "ExcuteFunction:  ModuleId='{}', Module status={}", ModuleId, (int)status);
 
         if (status == v8::Module::kErrored)
         {
@@ -322,7 +322,7 @@ namespace rinrin::uejs
             }
         }
 
-        UEJS_LOG(LogJs, Verbose, "ExcuteFunction: retrieving module namespace");
+        UEJS_LOG(LogJs, VeryVerbose, "ExcuteFunction: ModuleId='{}', retrieving module namespace", ModuleId);
         if (status != v8::Module::kInstantiated && status != v8::Module::kEvaluated)
         {
             return UEJS_MAKE_ERROR(
@@ -333,7 +333,7 @@ namespace rinrin::uejs
         v8::Local<v8::Value> moduleNsVal = foundedModule->GetModuleNamespace();
         if (moduleNsVal.IsEmpty() || !moduleNsVal->IsObject())
         {
-            return UEJS_MAKE_ERROR("ExcuteFunction: Module namespace is not an object for '{}'.", ModuleId);
+            return UEJS_MAKE_ERROR("ExcuteFunction: ModuleId='{}', module namespace is not an object.", ModuleId);
         }
         v8::Local<v8::Object> moduleNameSpace = moduleNsVal.As<v8::Object>();
 
@@ -341,11 +341,11 @@ namespace rinrin::uejs
         if (!v8::String::NewFromUtf8(isolate, std::string(FunctionName).c_str(), v8::NewStringType::kNormal).ToLocal(&funKey))
         {
             return UEJS_MAKE_ERROR(
-                "ExcuteFunction: Failed to create function key string for '{}'.",
-                FunctionName);
+                "ExcuteFunction: ModuleId='{}', failed to create function key string for '{}'.",
+                ModuleId, FunctionName);
         }
 
-        UEJS_LOG(LogJs, VeryVerbose, "ExcuteFunction: looking up export");
+        UEJS_LOG(LogJs, VeryVerbose, "ExcuteFunction: ModuleId='{}', looking up export '{}'", ModuleId, FunctionName);
         v8::Local<v8::Value> funVal;
         if (!moduleNameSpace->Get(ctx, funKey).ToLocal(&funVal) || !funVal->IsFunction())
         {

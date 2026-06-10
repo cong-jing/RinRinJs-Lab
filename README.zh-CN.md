@@ -10,6 +10,8 @@
 
 语言版本：
 
+演示视频：展示 JavaScript 代码修改、Unreal 运行画面、hot reload，以及使用 Chrome DevTools 进行调试。
+
 - English: [README.md](README.md)
 - 简体中文：`README.zh-CN.md`
 - 日本語: [README.ja.md](README.ja.md)
@@ -189,6 +191,12 @@ RinRinJs.Reload
 ws://127.0.0.1:9229/
 ```
 
+推荐直接打开的 DevTools URL：
+
+```text
+devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229/
+```
+
 Discovery endpoints：
 
 ```text
@@ -197,15 +205,16 @@ http://127.0.0.1:9229/json/list
 http://127.0.0.1:9229/json/version
 ```
 
-基本流程：
+推荐流程：
 
 1. 运行 Unreal 项目。
 2. 打开 Chrome 或 Edge。
-3. 访问 `chrome://inspect`。
-4. 配置或检查 `127.0.0.1:9229`。
-5. 连接暴露出的 V8 target。
+3. 直接访问 `devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229/`。
+4. 直接连接本地 V8 target。
 
 Inspector transport 默认只面向本地访问，底层 HTTP/WebSocket 使用 CivetWeb。
+
+`chrome://inspect` 仍然可以作为 discovery 入口，但从那里点击 `Inspect` 打开的独立窗口，在断开连接或 reload 后未必会像直接 `devtools://...` 一样清晰反映当前状态。
 
 ## 项目结构
 

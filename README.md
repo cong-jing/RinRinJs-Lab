@@ -8,6 +8,8 @@ RinRinJs-Lab is an Unreal Engine 5.7 sample project built around `RinRinJs`, a r
 
 This repository is primarily portfolio/source-code material. It shows native engine integration, third-party runtime embedding, Unreal module boundaries, structured error handling, browser debugging, and a script-driven gameplay loop.
 
+Demo video: JavaScript editing, Unreal runtime playback, hot reload, and Chrome DevTools debugging.
+
 Language versions:
 
 - English: `README.md`
@@ -189,6 +191,12 @@ Default local WebSocket endpoint:
 ws://127.0.0.1:9229/
 ```
 
+Recommended direct DevTools URL:
+
+```text
+devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229/
+```
+
 Discovery endpoints:
 
 ```text
@@ -197,15 +205,16 @@ http://127.0.0.1:9229/json/list
 http://127.0.0.1:9229/json/version
 ```
 
-Typical workflow:
+Recommended workflow:
 
 1. Run the Unreal project.
 2. Open Chrome or Edge.
-3. Navigate to `chrome://inspect`.
-4. Configure or inspect `127.0.0.1:9229`.
-5. Attach DevTools to the exposed V8 target.
+3. Open `devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229/`.
+4. Attach DevTools directly to the local V8 target.
 
 The Inspector transport is local-only by default and uses CivetWeb for HTTP/WebSocket handling.
+
+`chrome://inspect` still works as a discovery entry point, but the separate popup window opened from there may not reflect disconnect/reload state as clearly as the direct `devtools://...` URL.
 
 ## Project Map
 

@@ -8,6 +8,8 @@
 
 このリポジトリは主にポートフォリオおよびソースコード展示用です。ネイティブエンジン統合、V8 組み込み、Unreal モジュール境界、構造化エラー処理、Chrome/Edge DevTools によるデバッグ、JavaScript 駆動の gameplay loop を示します。
 
+Demo video: JavaScript editing, Unreal runtime playback, hot reload, and Chrome DevTools debugging.
+
 Language versions:
 
 - English: [README.md](README.md)
@@ -101,7 +103,15 @@ ws://127.0.0.1:9229/
 http://127.0.0.1:9229/json/list
 ```
 
-Open `chrome://inspect` in Chrome or Edge and attach to the V8 target.
+Recommended direct DevTools URL:
+
+```text
+devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229/
+```
+
+Open the direct `devtools://...` URL in Chrome or Edge and attach to the local V8 target.
+
+`chrome://inspect` can still be used as a discovery entry point, but the separate popup window opened from there may not reflect disconnect/reload state as clearly as the direct `devtools://...` URL.
 
 ## Project Map
 

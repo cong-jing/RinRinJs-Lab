@@ -2,8 +2,8 @@
 // Edit constants below and run `RinRinJs.Reload` in the UE console to see
 // the change without restarting the editor.
 
-const RADIUS = 200;
-const SPEED = 1;
+const RADIUS = 300;
+const SPEED = 3;
 const HEIGHT_AMPLITUDE = 80;
 const ROTATION_SPEED = 90;
 const BASE_HEIGHT = 120;
@@ -11,6 +11,8 @@ const BASE_HEIGHT = 120;
 let actor = 0;
 let time = 0;
 
+// The start function is called when the script package is loaded.
+// We spawn a cube actor and keep a reference to it. 
 export function start(context) {
     time = 0;
     ue.log("[demo] start", JSON.stringify(context));
@@ -28,6 +30,8 @@ export function start(context) {
     }
 }
 
+// The tick function is called every frame with the delta time in seconds since the last tick.
+// We update the actor's location and rotation to make it orbit around the origin.
 export function tick(deltaSeconds) {
     if (!actor) return;
     time += deltaSeconds;

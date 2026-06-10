@@ -101,6 +101,10 @@ namespace rinrin::uejs
         {
             Context.Reset();
         }
+        if (Isolate && !bUseContextEmbedder)
+        {
+            Isolate->SetData(kIsolateSlot, nullptr);
+        }
         Isolate = nullptr;
     }
 

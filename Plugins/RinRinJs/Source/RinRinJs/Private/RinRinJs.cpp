@@ -38,7 +38,6 @@ void FRinRinJsModule::ShutdownModule()
 	if (ScriptHost)
 	{
 		ScriptHost->Unload();
-		ScriptHost.reset();
 	}
 
 #if RinRinJs_USE_V8
@@ -46,6 +45,12 @@ void FRinRinJsModule::ShutdownModule()
 	V8Loader.FinalizeV8Process();
 #else
 #endif
+
+	if (ScriptHost)
+	{
+		ScriptHost->ReleaseNativeStateAfterContextDestroyed();
+		ScriptHost.reset();
+	}
 }
 
 void FRinRinJsModule::StartRuntime()
@@ -91,19 +96,28 @@ void FRinRinJsModule::StopRuntime()
 	if (ScriptHost)
 	{
 		ScriptHost->Unload();
-		ScriptHost.reset();
 	}
 
 #if RinRinJs_USE_V8
 	// Shutdown V8 through V8Loader module
 	FV8Loader &V8Loader = FV8Loader::Get();
 	V8Loader.DestroyExecutionContext();
+	if (ScriptHost)
+	{
+		ScriptHost->ReleaseNativeStateAfterContextDestroyed();
+		ScriptHost.reset();
+	}
 #else
 	// Shutdown ChakraCore through ChakraCoreLoader module
 	if (FModuleManager::Get().IsModuleLoaded("ChakraCoreLoader"))
 	{
 		FChakraCoreLoaderModule &ChakraCoreLoader = FModuleManager::GetModuleChecked<FChakraCoreLoaderModule>("ChakraCoreLoader");
 		ChakraCoreLoader.ShutdownChakraCore();
+	}
+	if (ScriptHost)
+	{
+		ScriptHost->ReleaseNativeStateAfterContextDestroyed();
+		ScriptHost.reset();
 	}
 #endif
 	UEJS_LOG(LogJs, Log, "RinRinJs module shutdown");

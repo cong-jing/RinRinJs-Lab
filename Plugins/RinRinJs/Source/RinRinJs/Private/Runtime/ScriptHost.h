@@ -23,7 +23,7 @@ namespace rinrin::uejs
      * Pipeline:
      *   LoadPackage(packageRoot)
      *     -> if a package is already loaded:
-     *          Unload() + drop the V8 execution context + recreate it
+     *          Unload() + drop the V8 execution context + release native bindings + recreate it
      *     -> ensure V8 context exists
      *     -> create NativeBridge + ActorRegistry
      *     -> inject `ue` globals
@@ -38,6 +38,7 @@ namespace rinrin::uejs
      *     -> call exported dispose() if present
      *     -> destroy JS-spawned actors
      *     -> clear actor registry
+     *     -> keep native bridge storage alive until the V8 context is destroyed
      *
      *   Reload() -> LoadPackage(CurrentPackageRoot)
      */
@@ -64,6 +65,9 @@ namespace rinrin::uejs
 
         /** Unload current package (dispose + destroy actors). No-op if nothing is loaded. */
         void Unload();
+
+        /** Release native objects referenced by V8 callbacks. Call only after the V8 context is gone. */
+        void ReleaseNativeStateAfterContextDestroyed();
 
         /** Unload + rebuild execution context + reload last package. */
         TExpected<void> Reload();

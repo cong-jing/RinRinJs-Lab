@@ -124,12 +124,13 @@ namespace rinrin::uejs
         // If a package is already loaded, do the full reload pipeline: dispose old
         // package, then drop the V8 execution context so the module cache and any
         // stale module/global state are gone before we load the new package.
-        if (bLoaded)
+        if (bLoaded || Bridge || ActorRegistry)
         {
             Unload();
 
             FV8Loader &Loader = FV8Loader::Get();
             Loader.DestroyExecutionContext();
+            ReleaseNativeStateAfterContextDestroyed();
             Loader.CreateExecutionContext();
         }
         return LoadPackageInternal(PackageRootAbs);
@@ -295,13 +296,20 @@ namespace rinrin::uejs
         {
             ActorRegistry->DestroyAllAndReset();
         }
+        if (Bridge)
+        {
+            Bridge->SetActorRegistry(nullptr);
+        }
 
         bLoaded = false;
         bTickMissingLogged = false;
         MainModuleId.clear();
         CurrentManifest = FScriptManifest();
         // Keep CurrentPackageRoot so Reload() can use it.
+    }
 
+    void FScriptHost::ReleaseNativeStateAfterContextDestroyed()
+    {
         Bridge.reset();
         ActorRegistry.reset();
     }

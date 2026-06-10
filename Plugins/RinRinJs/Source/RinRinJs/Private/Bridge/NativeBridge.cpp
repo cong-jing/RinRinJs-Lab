@@ -64,6 +64,15 @@ namespace rinrin::uejs
             return true;
         }
 
+        // ReadVector / ReadRotator semantics:
+        //   - Value missing (empty / undefined / null)  -> OutVec = default, return true.
+        //   - Value present and is a plain object       -> parse members; missing members
+        //                                                   default to the matching field
+        //                                                   of `DefaultValue`; non-numeric
+        //                                                   members are an error.
+        //   - Value present but is not an object        -> error (return false).
+        // Returning false means "JS passed malformed data"; callers should throw.
+
         bool ReadVector(v8::Isolate *Isolate,
                         v8::Local<v8::Context> Context,
                         v8::Local<v8::Value> Value,
@@ -71,7 +80,9 @@ namespace rinrin::uejs
                         FVector &OutVec)
         {
             OutVec = DefaultValue;
-            if (Value.IsEmpty() || !Value->IsObject())
+            if (Value.IsEmpty() || Value->IsUndefined() || Value->IsNull())
+                return true;
+            if (!Value->IsObject())
                 return false;
             v8::Local<v8::Object> obj = Value.As<v8::Object>();
             double x, y, z;
@@ -92,7 +103,9 @@ namespace rinrin::uejs
                          FRotator &OutRot)
         {
             OutRot = DefaultValue;
-            if (Value.IsEmpty() || !Value->IsObject())
+            if (Value.IsEmpty() || Value->IsUndefined() || Value->IsNull())
+                return true;
+            if (!Value->IsObject())
                 return false;
             v8::Local<v8::Object> obj = Value.As<v8::Object>();
             double pitch, yaw, roll;
@@ -106,16 +119,26 @@ namespace rinrin::uejs
             return true;
         }
 
+        // ReadTransform: { location?: Vector, rotation?: Rotator, scale?: Vector }.
+        // Each sub-field uses the same missing-vs-malformed rule as ReadVector/ReadRotator.
+        // Returns false if any field is present but malformed; OutErrorField is then set
+        // to the first offending field name ("location" / "rotation" / "scale" / "<root>").
         bool ReadTransform(v8::Isolate *Isolate,
                            v8::Local<v8::Context> Context,
                            v8::Local<v8::Value> Value,
-                           FTransform &OutTransform)
+                           FTransform &OutTransform,
+                           const char *&OutErrorField)
         {
             OutTransform = FTransform::Identity;
+            OutErrorField = nullptr;
+
             if (Value.IsEmpty() || Value->IsUndefined() || Value->IsNull())
-                return true; // default ok
+                return true;
             if (!Value->IsObject())
+            {
+                OutErrorField = "<root>";
                 return false;
+            }
 
             v8::Local<v8::Object> obj = Value.As<v8::Object>();
 
@@ -133,9 +156,22 @@ namespace rinrin::uejs
             FVector loc = FVector::ZeroVector;
             FRotator rot = FRotator::ZeroRotator;
             FVector scale = FVector::OneVector;
-            ReadVector(Isolate, Context, getMember("location"), FVector::ZeroVector, loc);
-            ReadRotator(Isolate, Context, getMember("rotation"), FRotator::ZeroRotator, rot);
-            ReadVector(Isolate, Context, getMember("scale"), FVector::OneVector, scale);
+
+            if (!ReadVector(Isolate, Context, getMember("location"), FVector::ZeroVector, loc))
+            {
+                OutErrorField = "location";
+                return false;
+            }
+            if (!ReadRotator(Isolate, Context, getMember("rotation"), FRotator::ZeroRotator, rot))
+            {
+                OutErrorField = "rotation";
+                return false;
+            }
+            if (!ReadVector(Isolate, Context, getMember("scale"), FVector::OneVector, scale))
+            {
+                OutErrorField = "scale";
+                return false;
+            }
 
             OutTransform = FTransform(rot.Quaternion(), loc, scale);
             return true;
@@ -296,9 +332,12 @@ namespace rinrin::uejs
         FTransform transform;
         if (Args.Length() >= 2)
         {
-            if (!ReadTransform(isolate, ctx, Args[1], transform))
+            const char *badField = nullptr;
+            if (!ReadTransform(isolate, ctx, Args[1], transform, badField))
             {
-                Throw(isolate, "ue.spawnActorByPath: invalid transform");
+                const std::string msg = std::string("ue.spawnActorByPath: invalid transform field '") +
+                                        (badField ? badField : "?") + "'";
+                Throw(isolate, msg.c_str());
                 return;
             }
         }
@@ -457,9 +496,12 @@ namespace rinrin::uejs
             return;
         }
         FTransform t;
-        if (!ReadTransform(isolate, isolate->GetCurrentContext(), Args[1], t))
+        const char *badField = nullptr;
+        if (!ReadTransform(isolate, isolate->GetCurrentContext(), Args[1], t, badField))
         {
-            Throw(isolate, "ue.setTransform: invalid transform");
+            const std::string msg = std::string("ue.setTransform: invalid transform field '") +
+                                    (badField ? badField : "?") + "'";
+            Throw(isolate, msg.c_str());
             return;
         }
         actor->SetActorTransform(t);

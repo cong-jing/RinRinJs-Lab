@@ -22,7 +22,12 @@ namespace rinrin::uejs
 
     TExpected<FScriptManifest> LoadScriptManifest(const FString &PackageRootAbs)
     {
-        FString manifestPath = FPaths::Combine(PackageRootAbs, TEXT("rinrin.manifest.json"));
+        // Normalize the root once so prefix checks elsewhere are exact.
+        FString rootNormalized = PackageRootAbs;
+        FPaths::CollapseRelativeDirectories(rootNormalized);
+        FPaths::MakeStandardFilename(rootNormalized);
+
+        FString manifestPath = FPaths::Combine(rootNormalized, TEXT("rinrin.manifest.json"));
         FPaths::CollapseRelativeDirectories(manifestPath);
         FPaths::MakeStandardFilename(manifestPath);
 
@@ -40,7 +45,7 @@ namespace rinrin::uejs
         }
 
         FScriptManifest m;
-        m.PackageRootAbs = PackageRootAbs;
+        m.PackageRootAbs = rootNormalized;
         json->TryGetStringField(TEXT("name"), m.Name);
         json->TryGetStringField(TEXT("version"), m.Version);
 

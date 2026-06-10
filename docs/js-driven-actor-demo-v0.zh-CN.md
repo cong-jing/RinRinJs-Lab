@@ -278,54 +278,51 @@ RinRinJs.Reload
 
 v0 可以选择“重建 execution context”的方式降低缓存和 stale reference 风险。这样不是 full HMR，但稳定、可解释，也更适合 demo。
 
-## TypeScript Workflow
+## JavaScript Workflow
+
+v0 不引入 TypeScript / tsc / npm 构建步骤。demo 直接编辑 JavaScript 源文件，由 V8 当作 ES module 加载。
 
 建议目录：
 
 ```text
 Content/Mods/Core/
   rinrin.manifest.json
-  package.json
-  tsconfig.json
-  src/
-    demo.ts
-  dist/
-    main.js
+  package.json   # 只有 { "type": "module" }，用于 IDE/工具识别为 ESM
+  main.js        # demo 入口（与 manifest 的 "main" 对应）
 ```
 
 `package.json` v0：
 
 ```json
 {
+  "name": "core-demo",
+  "version": "0.1.0",
   "type": "module",
-  "scripts": {
-    "watch": "tsc -w",
-    "build": "tsc"
-  },
-  "devDependencies": {
-    "typescript": "^5.0.0"
-  }
+  "private": true
 }
 ```
 
-Runtime 加载 `dist/main.js`，不要直接加载 `.ts`。
+Runtime 直接加载 `main.js`，没有 `dist/` 目录，也不需要任何 watch 进程。
+
+后续如果想换 TypeScript，再加 `tsconfig.json` 把 manifest 改成指向 `dist/main.js` 即可，runtime 不需要变化。
 
 ## Demo Script 行为
 
-最小 demo：
+最小 demo（plain JS，ES module）：
 
-```ts
-const radius = 300;
-const speed = 1.2;
-const heightAmplitude = 80;
-const rotationSpeed = 90;
+```js
+const RADIUS = 300;
+const SPEED = 1.2;
+const HEIGHT_AMPLITUDE = 80;
+const ROTATION_SPEED = 90;
+const BASE_HEIGHT = 120;
 
 let actor = 0;
 let time = 0;
 
-export function start() {
+export function start(context) {
   actor = ue.spawnActorByPath("/Engine/BasicShapes/Cube.Cube", {
-    location: { x: radius, y: 0, z: 120 },
+    location: { x: RADIUS, y: 0, z: BASE_HEIGHT },
     scale: { x: 1, y: 1, z: 1 }
   });
 }
@@ -333,16 +330,16 @@ export function start() {
 export function tick(deltaTime) {
   time += deltaTime;
 
-  const angle = time * speed;
+  const angle = time * SPEED;
   ue.setLocation(actor, {
-    x: Math.cos(angle) * radius,
-    y: Math.sin(angle) * radius,
-    z: 120 + Math.sin(angle * 2) * heightAmplitude
+    x: Math.cos(angle) * RADIUS,
+    y: Math.sin(angle) * RADIUS,
+    z: BASE_HEIGHT + Math.sin(angle * 2) * HEIGHT_AMPLITUDE
   });
 
   ue.setRotation(actor, {
     pitch: 0,
-    yaw: time * rotationSpeed,
+    yaw: time * ROTATION_SPEED,
     roll: 0
   });
 }
@@ -355,7 +352,7 @@ export function dispose() {
 }
 ```
 
-视频展示时修改 `radius` 或 `speed`，保存后由 `tsc -w` 编译，再在 UE 中执行 `RinRinJs.Reload`。
+视频展示时直接修改 `Content/Mods/Core/main.js` 中的 `RADIUS` 或 `SPEED`，保存，再在 UE 中执行 `RinRinJs.Reload`。
 
 ## 分阶段实施计划
 
@@ -503,35 +500,35 @@ Plugins/RinRinJs/Source/RinRinJs/Private/Runtime/ScriptHost.*
 - 修改 JS 后执行 `RinRinJs.Reload`，actor 行为变化。
 - 故意写错 JS，reload 输出错误；修正后 reload 可恢复。
 
-### 6. TypeScript demo workflow
+### 6. JavaScript demo workflow
 
 目标：
 
-- 支持 TS 参数修改和 watch 编译。
+- 把现有的 `Content/Mods/Core/main.js` 改成 demo 入口，移除原先的临时测试代码。
 
 涉及文件：
 
 ```text
+Content/Mods/Core/rinrin.manifest.json
 Content/Mods/Core/package.json
-Content/Mods/Core/tsconfig.json
-Content/Mods/Core/src/demo.ts
-Content/Mods/Core/dist/main.js
+Content/Mods/Core/main.js
 ```
 
 内容：
 
-- 配置 `tsc` 编译到 `dist`。
-- manifest 指向 `dist/main.js`。
-- README 后续补充 watch 命令。
+- 在 `Content/Mods/Core/` 新建 `rinrin.manifest.json`，`main` 指向 `main.js`。
+- `package.json` 仅保留 `"type": "module"`，方便 IDE/Node 工具识别 ESM。
+- `main.js` 导出 `start` / `tick` / `dispose`，使用 `globalThis.ue` 控制 actor。
 
 风险：
 
-- 如果引入 npm 依赖，仓库是否提交 `node_modules` 必须明确。建议不提交。
+- 没有 TS / build step，因此所有改动都需要遵守 ES module 语法。
+- runtime 会拒绝任何跳出包根目录的 `import`（出于 mod 沙箱考虑），因此 `import './foo.js'` 这种是 OK 的，`import '../../bar.js'` 会被拒绝。
 
 验证：
 
-- `npm run watch` 或 `pnpm watch` 后修改 TS，dist JS 更新。
-- UE reload 后看到行为变化。
+- 直接编辑 `main.js`，在 UE 中执行 `RinRinJs.Reload`，actor 行为变化。
+- 故意写错 JS，reload 报错；修正后 reload 恢复。
 
 ### 7. README 和 demo 文档更新
 
@@ -572,7 +569,7 @@ docs/project-map.ja.md
 - actor 可以在 JS 控制下移动、浮动或旋转。
 - `dispose` 可以清理 actor。
 - `RinRinJs.Reload` 可以重新加载脚本。
-- 修改 TypeScript 参数后，不重启 UE Editor 即可看到变化。
+- 修改 `Content/Mods/Core/main.js` 后，不重启 UE Editor 即可看到变化。
 - Chrome DevTools 可以在 `tick` 中断点调试。
 - JS 错误不会导致 UE 崩溃，而是输出清晰错误和 stack trace。
 
@@ -585,6 +582,6 @@ v0 完成后，可以逐步演进：
 - `globalThis.ue` -> permissioned native API namespace。
 - GameInstance ticker -> Subsystem 或 plugin runtime host。
 - reload v0 -> 更细粒度 script reload / HMR。
-- 调试 dist JS -> source map 支持。
+- 如果未来引入 TypeScript / 打包：在 `Content/Mods/Core/` 加 `tsconfig.json` 把产物写到 `dist/`，manifest 改成指向 `dist/main.js`，并补 source map 支持。
 
 重点是：v0 不是一次性废弃原型，而是用一个可替换的 host/bridge 外壳包住现有 runtime core。未来扩展时优先替换外壳和组织层，不要重写 V8、Inspector、错误模型这些底座。

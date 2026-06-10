@@ -75,6 +75,27 @@ namespace rinrin::uejs
 
         FPaths::CollapseRelativeDirectories(resolved);
         FPaths::MakeStandardFilename(resolved);
+
+        // 3) Clamp to package root: do not let scripts read files outside the package.
+        //    PackageRootAbs is already normalized by LoadScriptManifest.
+        const FString &root = CurrentManifest.PackageRootAbs;
+        if (!root.IsEmpty())
+        {
+            FString rootWithSep = root;
+            if (!rootWithSep.EndsWith(TEXT("/")) && !rootWithSep.EndsWith(TEXT("\\")))
+            {
+                rootWithSep.AppendChar(TEXT('/'));
+            }
+            if (!resolved.StartsWith(rootWithSep))
+            {
+                OutError = std::string("ResolveModuleId: refusing to resolve '") +
+                           std::string(RequestSpecifier) +
+                           "' outside package root ('" +
+                           FStringToStdString(resolved) + "')";
+                return false;
+            }
+        }
+
         OutResolvedModuleId = FStringToStdString(resolved);
         OutError.clear();
         return true;
@@ -99,10 +120,16 @@ namespace rinrin::uejs
 
     TExpected<void> FScriptHost::LoadPackage(const FString &PackageRootAbs)
     {
-        // Idempotency: if same package is requested, treat as reload.
+        // If a package is already loaded, do the full reload pipeline: dispose old
+        // package, then drop the V8 execution context so the module cache and any
+        // stale module/global state are gone before we load the new package.
         if (bLoaded)
         {
             Unload();
+
+            FV8Loader &Loader = FV8Loader::Get();
+            Loader.DestroyExecutionContext();
+            Loader.CreateExecutionContext();
         }
         return LoadPackageInternal(PackageRootAbs);
     }
@@ -217,10 +244,11 @@ namespace rinrin::uejs
             auto callResult = mgr->ExecuteFunction(MainModuleId, "start", argSpan, ret);
             if (!callResult)
             {
-                callResult.Error().Log(LogJs, ELogVerbosity::Error);
-                // Demoting to a soft failure: package is "loaded" but start errored.
-                // We don't unload here because dispose still needs to run, and tick may
-                // succeed even when start crashed (this matches Node.js dev-loop habits).
+                // We keep bLoaded == true so the next Unload() can still call dispose()
+                // and tear down whatever the partial start() managed to create. But the
+                // caller (and the RinRinJs.Reload console command) must see this as a
+                // hard failure: the demo is not in a usable state.
+                return Err(std::move(callResult).TakeError().WithContext("ScriptHost::LoadPackage: start() failed", UEJS_HERE));
             }
         }
         else
@@ -281,16 +309,9 @@ namespace rinrin::uejs
             return UEJS_MAKE_ERROR("ScriptHost::Reload: no package has ever been loaded.");
         }
 
-        const FString savedRoot = CurrentPackageRoot;
-        Unload();
-
-        // Rebuild the V8 context to drop module cache + any stale references.
-        // This is the "v0 reload that is stable and easy to explain" path from the design doc.
-        FV8Loader &Loader = FV8Loader::Get();
-        Loader.DestroyExecutionContext();
-        Loader.CreateExecutionContext();
-
-        return LoadPackageInternal(savedRoot);
+        // LoadPackage() already performs unload + V8 context rebuild + reload when a
+        // package is currently loaded. Reload() is just "do that against the last root".
+        return LoadPackage(CurrentPackageRoot);
     }
 
     void FScriptHost::Tick(float DeltaSeconds)

@@ -22,25 +22,25 @@ namespace rinrin::uejs
      * Owns one script package at a time and drives its start / tick / dispose lifecycle.
      *
      * Pipeline (v0):
-     *   Load(packageRoot)
-     *     -> ensure V8 context
+     *   LoadPackage(packageRoot)
+     *     -> if a package is already loaded:
+     *          Unload() + drop the V8 execution context + recreate it
+     *     -> ensure V8 context exists
      *     -> create NativeBridge + ActorRegistry
      *     -> inject `ue` globals
      *     -> read manifest
      *     -> compile + evaluate main module
-     *     -> call exported start({ packageName })
+     *     -> call exported start({ packageName }); a thrown start() is a hard failure
+     *        but bLoaded stays true so a subsequent Unload() can still call dispose()
      *
-     *   Tick(dt) -> call exported tick(dt) if present
+     *   Tick(dt) -> call exported tick(dt) if present (errors are logged, not propagated)
      *
      *   Unload()
      *     -> call exported dispose() if present
      *     -> destroy JS-spawned actors
      *     -> clear actor registry
      *
-     *   Reload()
-     *     -> Unload()
-     *     -> rebuild V8 execution context (drops module cache + stale state)
-     *     -> Load(savedPackageRoot)
+     *   Reload() -> LoadPackage(CurrentPackageRoot)
      */
     class FScriptHost
     {

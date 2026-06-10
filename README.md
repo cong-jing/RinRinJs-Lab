@@ -9,6 +9,8 @@ RinRinJs-Lab is an Unreal Engine 5.7 sample project built around `RinRinJs`, a r
 This repository is primarily portfolio/source-code material. It shows native engine integration, third-party runtime embedding, Unreal module boundaries, structured error handling, browser debugging, and a script-driven gameplay loop.
 
 Demo video: JavaScript editing, Unreal runtime playback, hot reload, and Chrome DevTools debugging.
+https://github.com/user-attachments/assets/be83b3a8-c648-420e-9dd5-5a582635e4c4
+
 
 Language versions:
 

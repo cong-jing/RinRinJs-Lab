@@ -1,4 +1,4 @@
-// v0 demo: spawn a cube and orbit it.
+// Script package entry: spawn a cube and orbit it.
 // Edit constants below and run `RinRinJs.Reload` in the UE console to see
 // the change without restarting the editor.
 

@@ -22,12 +22,12 @@ namespace rinrin::uejs
     class FActorHandleRegistry;
 
     /**
-     * Injects the v0 `globalThis.ue` namespace into a V8 context.
+     * Injects the allowlisted `globalThis.ue` namespace into a V8 context.
      *
      * Lifetime:
      * - Owned by FScriptHost.
      * - Holds a raw UWorld*; the host is responsible for refreshing it at safe points
-     *   and clearing it on shutdown. For this v0 demo that is simpler and avoids
+     *   and clearing it on shutdown. Refreshing from stable host ticks avoids
      *   weak-object churn during world-change callbacks.
      *
      * Threading: every JS call into UE happens on the game thread, and every UE call

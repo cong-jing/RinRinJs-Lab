@@ -13,12 +13,12 @@ class AActor;
 namespace rinrin::uejs
 {
     /**
-     * Opaque actor handle registry for v0 demo.
+     * Opaque actor handle registry for JavaScript-created actors.
      *
      * - JS receives an int32 handle.
      * - C++ keeps a TWeakObjectPtr<AActor> so we never dangle.
-     * - All actors handed out here are considered "JS-owned" for v0:
-     *   on Reset() we destroy them in the world.
+     * - All actors handed out here are considered JS-owned by this registry:
+     *   on DestroyAllAndReset() we destroy them in the world.
      */
     class FActorHandleRegistry
     {

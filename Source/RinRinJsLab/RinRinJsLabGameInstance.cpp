@@ -73,7 +73,7 @@ bool URinRinJsLabGameInstance::TickScripts(float DeltaSeconds)
 		FRinRinJsModule &JsModule = FModuleManager::GetModuleChecked<FRinRinJsModule>("RinRinJs");
 		UWorld *World = GetWorld();
 		// Refresh the world from a stable game-thread tick rather than world-change
-		// callbacks. That keeps the v0 demo away from teardown/hot-reload edges.
+		// callbacks. That keeps script loading away from teardown/hot-reload edges.
 		JsModule.SetGameWorld(World);
 
 		if (!bPackageLoaded && !bPackageLoadAttempted && World && World->IsGameWorld() && World->HasBegunPlay())

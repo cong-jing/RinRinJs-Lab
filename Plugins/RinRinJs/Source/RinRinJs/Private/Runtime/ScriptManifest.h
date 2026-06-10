@@ -10,7 +10,7 @@
 namespace rinrin::uejs
 {
     /**
-     * Minimal v0 manifest. No semver, no deps, no permissions.
+     * Minimal script package manifest. No semver, no dependencies, no permissions yet.
      * The manifest's only job is to point at one script package and its entry module.
      */
     struct FScriptManifest

@@ -35,7 +35,7 @@ public:
 
 	rinrin::uejs::TExpected<void> EvaluateString(const std::string_view ScriptUtf8);
 
-	// ---- v0 script-package lifecycle ----
+	// ---- script-package lifecycle ----
 
 	/** Set the UWorld JS uses for spawn / actor calls. Safe to call repeatedly. */
 	void SetGameWorld(UWorld *World);

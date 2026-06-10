@@ -67,7 +67,8 @@ namespace rinrin::uejs
         }
         else
         {
-            // 2) Relative to referrer's directory. v0 only supports relative paths.
+            // 2) Relative to referrer's directory. The current package loader only
+            // supports relative paths.
             const FString referrer = StdStringViewToFString(ReferrerResolvedId);
             const FString baseDir = FPaths::GetPath(referrer);
             resolved = FPaths::Combine(baseDir, request);
@@ -173,6 +174,10 @@ namespace rinrin::uejs
             Bridge->Inject(isolate, ctx);
         }
 
+        // Remember the requested root before reading files so Reload() can retry after
+        // fixing a missing or invalid manifest.
+        CurrentPackageRoot = PackageRootAbs;
+
         // Read manifest.
         TExpected<FScriptManifest> manifestResult = LoadScriptManifest(PackageRootAbs);
         if (!manifestResult)
@@ -180,7 +185,6 @@ namespace rinrin::uejs
             return Err(std::move(manifestResult).TakeError().WithContext("Loading manifest", UEJS_HERE));
         }
         CurrentManifest = std::move(*manifestResult);
-        CurrentPackageRoot = PackageRootAbs;
 
         // Verify the main file exists before we try to compile it (better error message).
         const FString mainAbs = CurrentManifest.MainAbs();
@@ -351,8 +355,7 @@ namespace rinrin::uejs
         auto r = mgr->ExecuteFunction(MainModuleId, "tick", argSpan, ret);
         if (!r)
         {
-            // We deliberately do NOT propagate. Per v0 policy: log and keep ticking
-            // so a single bad frame doesn't kill the whole demo.
+            // Log and keep ticking so a single bad frame does not stop the host.
             r.Error().Log(LogJs, ELogVerbosity::Error);
         }
     }

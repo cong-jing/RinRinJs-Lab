@@ -1,52 +1,97 @@
 # Project Map
 
-This document describes the main source layout and dependency flow of `RinRinJs-Lab` and the `RinRinJs` plugin.
+This document describes the current source layout and dependency flow of `RinRinJs-Lab` and the `RinRinJs` plugin.
 
 Language versions:
 
 - English: `docs/project-map.md`
-- 简体中文: [docs/project-map.zh-CN.md](project-map.zh-CN.md)
-- 日本語: [docs/project-map.ja.md](project-map.ja.md)
+- Simplified Chinese: [docs/project-map.zh-CN.md](project-map.zh-CN.md)
+- Japanese: [docs/project-map.ja.md](project-map.ja.md)
 
 ## Top Level
 
 ```text
 RinRinJsLab.uproject
-Source/RinRinJsLab
-Content/Mods/Core
-Plugins/RinRinJs
+Config/
+Source/RinRinJsLab/
+Content/Mods/Core/
+Plugins/RinRinJs/
 ```
 
 Responsibilities:
 
 - `RinRinJsLab.uproject` defines the Unreal project.
-- `Source/RinRinJsLab` contains the sample game module.
-- `Content/Mods/Core` contains JavaScript examples loaded by the runtime.
-- `Plugins/RinRinJs` contains the Unreal plugin that embeds V8.
+- `Config/DefaultEngine.ini` sets the sample map and `URinRinJsLabGameInstance`.
+- `Source/RinRinJsLab` contains the host game module.
+- `Content/Mods/Core` contains the script package loaded by the runtime.
+- `Plugins/RinRinJs` contains the runtime plugin that embeds V8.
 
-## Game Module
+## Host Game Module
 
 ```text
 Source/RinRinJsLab/
+  RinRinJsLab.Build.cs
   RinRinJsLabGameInstance.h
   RinRinJsLabGameInstance.cpp
-  RinRinJsLab.Build.cs
 ```
 
 Responsibilities:
 
-- Owns the sample startup/shutdown flow.
-- Calls into `FRinRinJsModule`.
-- Provides module path resolution.
-- Provides JavaScript source loading.
-- Demonstrates how gameplay code can call into the plugin.
+- Depends on the `RinRinJs` plugin module.
+- Starts and stops the plugin runtime.
+- Registers a ticker that updates the plugin world pointer and drives script tick.
+- Waits until the game world has begun play before loading the script package.
+- Loads `Content/Mods/Core` as the active package.
 
-Current dependency:
+Current flow:
 
 ```text
-RinRinJsLab.Build.cs
-  -> PrivateDependencyModuleNames
-    -> RinRinJs
+URinRinJsLabGameInstance::Init()
+  -> FRinRinJsModule::StartRuntime()
+  -> register FTSTicker
+
+TickScripts(dt)
+  -> FRinRinJsModule::SetGameWorld(World)
+  -> if World->IsGameWorld() && World->HasBegunPlay():
+       LoadScriptPackage(Content/Mods/Core)
+  -> TickRuntime(dt)
+
+Shutdown()
+  -> UnloadScriptPackage()
+  -> StopRuntime()
+```
+
+## Script Package
+
+```text
+Content/Mods/Core/
+  rinrin.manifest.json
+  package.json
+  main.js
+```
+
+Responsibilities:
+
+- `rinrin.manifest.json` defines package metadata and the main module.
+- `package.json` marks the directory as ESM for editor/tooling support.
+- `main.js` exports lifecycle functions.
+
+Manifest:
+
+```json
+{
+    "name": "core-demo",
+    "version": "0.1.0",
+    "main": "main.js"
+}
+```
+
+Lifecycle exports:
+
+```text
+start(context)
+tick(deltaSeconds)
+dispose()
 ```
 
 ## Plugin Descriptor And Build
@@ -60,10 +105,10 @@ Plugins/RinRinJs/
 Responsibilities:
 
 - Declares `RinRinJs` as a runtime plugin module.
-- Adds Unreal dependencies such as `Core`, `CoreUObject`, and `Projects`.
-- Adds V8 include and library paths.
-- Adds V8 compile definitions matching the bundled Win64 static build.
-- Adds CivetWeb compile definitions for WebSocket support.
+- Adds Unreal dependencies such as `Core`, `CoreUObject`, `Engine`, `Json`, and `Projects`.
+- Adds V8 include/library paths.
+- Defines V8 compile macros matching the bundled Win64 static build.
+- Adds CivetWeb definitions for the local Inspector HTTP/WebSocket transport.
 
 ## Plugin Public API
 
@@ -72,25 +117,25 @@ Plugins/RinRinJs/Source/RinRinJs/Public/
   RinRinJs.h
   ModuleResolver.h
   Util/
-  Value/
+    Error.h
+    Expected.h
+    Log.h
 ```
 
 Responsibilities:
 
-- `RinRinJs.h`: declares `FRinRinJsModule`, the main Unreal-facing plugin API.
-- `ModuleResolver.h`: declares host-provided module resolve/load callback types.
-- `Value/ValueIntoJs.h`: defines C++ values that can be passed into JS.
-- `Value/ValueFromJs.h`: wraps JS return values for C++ callers.
-- `Util/Expected.h`: defines success-or-error return values.
-- `Util/Error.h`: defines structured errors with source location and optional stack information.
-- `Util/Log.h`: defines plugin logging helpers.
+- `RinRinJs.h` declares `FRinRinJsModule`, the Unreal-facing plugin entry point.
+- `ModuleResolver.h` declares host-provided module resolve/load callback types.
+- `Util/Expected.h` defines success-or-error return values.
+- `Util/Error.h` defines structured errors with source location and optional JS stack information.
+- `Util/Log.h` defines plugin logging helpers.
 
 Important boundary:
 
-- Public headers should avoid leaking V8 types where possible.
-- V8-specific code should remain in `Private`, behind stable plugin-facing wrappers.
+- Public headers avoid exposing V8 types.
+- Runtime and bridge implementation details stay in `Private`.
 
-## Plugin Module Implementation
+## Plugin Module
 
 ```text
 Plugins/RinRinJs/Source/RinRinJs/Private/
@@ -101,65 +146,127 @@ Responsibilities:
 
 - Implements `FRinRinJsModule`.
 - Initializes process-level V8 state during module startup.
-- Creates and destroys execution runtime state on explicit start/stop.
-- Exposes module loading and direct script evaluation to game code.
+- Starts and stops execution context state through explicit runtime calls.
+- Exposes script package lifecycle to the host game.
+- Registers and unregisters the `RinRinJs.Reload` console command.
 
-## V8 Runtime Layer
+Public module calls used by the host:
 
 ```text
-Plugins/RinRinJs/Source/RinRinJs/Private/V8/
-  V8Runtime.h
-  V8Runtime.cpp
-  V8EsModuleLoader.h
-  V8EsModuleLoader.cpp
-  V8Includes.h
+StartRuntime()
+StopRuntime()
+SetGameWorld(UWorld*)
+LoadScriptPackage(packageRoot)
+UnloadScriptPackage()
+ReloadScriptPackage()
+TickRuntime(deltaSeconds)
+```
+
+## Runtime Layer
+
+```text
+Plugins/RinRinJs/Source/RinRinJs/Private/Runtime/
+  ScriptHost.h
+  ScriptHost.cpp
+  ScriptManifest.h
+  ScriptManifest.cpp
 ```
 
 Responsibilities:
 
-- Own V8 platform initialization.
-- Own V8 isolate/context lifecycle.
-- Evaluate direct JavaScript source strings.
-- Load and evaluate ES Modules.
-- Cache compiled modules.
-- Convert V8 values to engine-facing wrappers.
+- Load `rinrin.manifest.json`.
+- Normalize package root and main module paths.
+- Clamp module resolution to the package root.
+- Create the per-package native bridge and actor registry.
+- Inject `globalThis.ue` into the V8 context.
+- Load and evaluate the main ES module.
+- Call `start(context)`, `tick(deltaSeconds)`, and `dispose()` when exported.
+- Rebuild the V8 execution context during reload.
+- Destroy JS-created actors during unload/reload.
+
+Flow:
+
+```text
+FRinRinJsModule
+  -> FScriptHost
+    -> LoadScriptManifest
+    -> FNativeBridge
+    -> FActorHandleRegistry
+    -> FV8Loader
+    -> FV8ModuleManager
+```
+
+## Bridge Layer
+
+```text
+Plugins/RinRinJs/Source/RinRinJs/Private/Bridge/
+  NativeBridge.h
+  NativeBridge.cpp
+  ActorHandleRegistry.h
+  ActorHandleRegistry.cpp
+```
+
+Responsibilities:
+
+- Inject the `ue` object into JavaScript.
+- Validate JS arguments before calling Unreal APIs.
+- Convert simple JS objects to `FVector`, `FRotator`, and `FTransform`.
+- Spawn `AStaticMeshActor` from a `UStaticMesh` asset path.
+- Name spawned actors with the `RinRinJsDemoActor` prefix for easy Outliner lookup.
+- Store actor references behind opaque integer handles.
+- Resolve handles back to actors for later bridge calls.
+- Destroy all registered JS-created actors on unload.
+
+Current bridge API:
+
+```text
+ue.log(...)
+ue.spawnActorByPath(assetPath, transform)
+ue.destroy(actorHandle)
+ue.setLocation(actorHandle, location)
+ue.getLocation(actorHandle)
+ue.setRotation(actorHandle, rotation)
+ue.setTransform(actorHandle, transform)
+ue.addWorldOffset(actorHandle, offset)
+ue.setVisible(actorHandle, visible)
+```
+
+## V8 Layer
+
+```text
+Plugins/RinRinJs/Source/RinRinJs/Private/V8/
+  V8Loader.h
+  V8Loader.cpp
+  V8ModuleManager.h
+  V8ModuleManager.cpp
+  V8Console.h
+  V8Console.cpp
+```
+
+Responsibilities:
+
+- Initialize and finalize process-level V8 resources.
+- Own the V8 platform, allocator, isolate, and execution context.
+- Create and destroy the V8 context.
+- Create and expose `FV8ModuleManager`.
+- Execute direct JavaScript source strings.
+- Load ES Modules through host resolver/source-loader callbacks.
+- Execute exported module functions.
+- Keep V8-specific types out of public plugin headers.
 
 Conceptual flow:
 
 ```text
-FRinRinJsModule
-  -> FV8Runtime
+FScriptHost
+  -> FV8Loader
     -> v8::Platform
     -> v8::Isolate
     -> v8::Context
-    -> ES module loader
-```
-
-## ES Module Loader
-
-```text
-Plugins/RinRinJs/Source/RinRinJs/Private/V8/
-  V8EsModuleLoader.*
-```
-
-Responsibilities:
-
-- Resolve module specifiers through host callbacks.
-- Load JavaScript source through host callbacks.
-- Compile modules through `v8::ScriptCompiler::CompileModule`.
-- Instantiate modules with `v8::Module::InstantiateModule`.
-- Evaluate modules with `v8::Module::Evaluate`.
-- Cache modules by resolved id.
-- Track referrer module ids for relative import resolution.
-
-Host callbacks:
-
-```text
-FResolveModuleIdFn
-  (referrer id, import specifier) -> resolved module id
-
-FLoadSourceByModuleIdFn
-  (resolved module id) -> UTF-8 source
+    -> FV8ModuleManager
+      -> CompileModule
+      -> InstantiateModule
+      -> Evaluate
+      -> ExecuteFunction(exportName)
 ```
 
 ## Inspector Layer
@@ -188,7 +295,7 @@ Responsibilities:
 Dependency flow:
 
 ```text
-FV8Runtime
+FV8Loader
   -> FV8Inspector
     -> FV8InspectorHost
       -> v8_inspector::V8Inspector
@@ -197,94 +304,64 @@ FV8Runtime
       -> CivetWeb
 ```
 
-## Value And Utility Layers
+## Utility Layer
 
 ```text
-Plugins/RinRinJs/Source/RinRinJs/Public/Value/
-Plugins/RinRinJs/Source/RinRinJs/Private/Value/
 Plugins/RinRinJs/Source/RinRinJs/Public/Util/
 Plugins/RinRinJs/Source/RinRinJs/Private/Util/
 ```
 
 Responsibilities:
 
-- Convert between V8 values and public value wrappers.
-- Keep V8 handles and context details in private implementation types.
 - Return failures through `TExpected`.
-- Preserve structured error details in `FError`.
+- Preserve structured error context in `FError`.
+- Capture and print JS stack details when available.
 - Format logs with source location information.
-
-Current value types:
-
-```text
-FValueIntoJs
-  Undefined
-  Null
-  Bool
-  Int32
-  Double
-  String
-
-FValueFromJs
-  Undefined
-  Null
-  Bool
-  Int32
-  Double
-  String
-```
-
-## Package Registry Work Area
-
-```text
-Plugins/RinRinJs/Source/RinRinJs/Private/
-  PackageLoader.h
-  PackageRegistry.h
-  PackageRegistry.cpp
-```
-
-Current intent:
-
-- Discover package manifests.
-- Cache package metadata.
-- Sort packages by load order.
-- Delegate package loading to a loader interface.
-
-This area is exploratory and not yet a stable runtime feature.
 
 ## Third-Party Dependencies
 
 ```text
 Plugins/RinRinJs/ThirdParty/v8
 Plugins/RinRinJs/Source/RinRinJs/Private/ThirdParty/civetweb
-Plugins/RinRinJs/ThirdParty/ChakraCore
+Plugins/RinRinJs/Source/ChakraCoreLoader
 ```
 
 Responsibilities:
 
 - V8 provides the JavaScript engine and Inspector API.
 - CivetWeb provides local HTTP/WebSocket transport for DevTools.
-- ChakraCore is retained as earlier exploration and fallback material.
+- ChakraCoreLoader remains in the repository as earlier runtime-loader work and is not the active path when `RinRinJs_USE_V8=1`.
 
 ## Overall Dependency Flow
 
 ```text
 RinRinJsLab GameInstance
   -> FRinRinJsModule
-    -> FV8Runtime
-      -> V8 process/platform
-      -> V8 isolate/context
-      -> ES module loader
-        -> host module resolver
-        -> host source loader
-      -> FV8Inspector
-        -> V8 Inspector Host
-        -> V8 Inspector Transport
-          -> CivetWeb
-      -> Value converters
-        -> FValueIntoJs
-        -> FValueFromJs
+    -> FScriptHost
+      -> ScriptManifest
+      -> FNativeBridge
+        -> FActorHandleRegistry
+        -> UWorld / AStaticMeshActor
+      -> FV8Loader
+        -> V8 process/platform
+        -> V8 isolate/context
+        -> FV8ModuleManager
+          -> host module resolver
+          -> host source loader
+          -> exported lifecycle calls
+        -> FV8Inspector
+          -> FV8InspectorHost
+          -> FV8InspectorTransport
+            -> CivetWeb
       -> Error utilities
         -> TExpected
         -> FError
 ```
+
+## Development Notes
+
+- `Content/Mods/Core/main.js` is the fastest place to iterate on script behavior.
+- `RinRinJs.Reload` is the current runtime reload entry point.
+- Actor handles are intentionally opaque. JavaScript should not receive raw UObject pointers.
+- Script loading should continue to reject imports outside the package root.
+- World-sensitive script loading should happen after the game world has begun play.

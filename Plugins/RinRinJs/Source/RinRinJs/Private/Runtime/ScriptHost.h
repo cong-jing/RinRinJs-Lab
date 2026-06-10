@@ -20,7 +20,7 @@ namespace rinrin::uejs
     /**
      * Owns one script package at a time and drives its start / tick / dispose lifecycle.
      *
-     * Pipeline (v0):
+     * Pipeline:
      *   LoadPackage(packageRoot)
      *     -> if a package is already loaded:
      *          Unload() + drop the V8 execution context + recreate it

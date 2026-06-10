@@ -1,8 +1,12 @@
 # RinRinJs-Lab / RinRinJs
 
-`RinRinJs-Lab` 是一个基于 Unreal Engine 5.7 的示例工程，核心内容是项目内插件 `RinRinJs`。这个插件将 Google V8 嵌入 Unreal Engine，使 C++ 游戏代码能够加载、执行并调试 JavaScript。
+## 维护说明
 
-这个仓库主要作为作品集和源码展示材料使用，用来体现我在原生引擎集成、第三方运行时嵌入、Unreal 模块边界设计、错误处理以及开发调试工具方面的实现方式。它本质上是一个探索性项目，而不是一个承诺长期维护的产品化插件，因此我不提供兼容性保证，也不承诺面向外部使用的长期支持。
+这个仓库目前主要用于作品集展示和招聘评估。我现阶段无法为它提供持续维护、功能承诺或对外支持。
+
+`RinRinJs-Lab` 是一个 Unreal Engine 5.7 示例工程，核心是运行时插件 `RinRinJs`。插件将 Google V8 嵌入 Unreal Engine，可以从项目内容目录加载 ES Module 脚本包，向 JavaScript 暴露受控的 Unreal API，按游戏帧驱动脚本生命周期，并通过 Chrome/Edge DevTools 调试脚本。
+
+这个仓库主要作为作品集和源码展示材料，用来体现原生引擎集成、第三方运行时嵌入、Unreal 模块边界、结构化错误处理、浏览器调试，以及脚本驱动玩法循环的实现方式。
 
 语言版本：
 
@@ -10,62 +14,47 @@
 - 简体中文：`README.zh-CN.md`
 - 日本語: [README.ja.md](README.ja.md)
 
-## 项目目标
-
-这个项目的目标，是探索一个适用于 Unreal Engine 的 JavaScript 运行时层，并逐步支持以下能力：
-
-- 从 C++ 驱动 JavaScript 进行游戏逻辑脚本化；
-- 支持 Mod 或用户自定义脚本工作流；
-- 从项目内容目录加载 ES Module；
-- 通过 V8 Inspector / Chrome DevTools 进行浏览器调试；
-- 提供结构化的 C++ 错误返回，而不是只依赖日志；
-- 为未来的 JavaScript 与 Unreal 对象、函数、游戏系统互操作打基础。
-
-当前阶段优先解决最困难的部分：在 Windows + MSVC 环境下把 V8 稳定嵌入 UE Runtime 模块。V8 在这个环境中的集成难点比较集中，包括编译参数、CRT/链接一致性、Unreal Build Tool 交互，以及平台宏和编译器宏对齐。因此当前仅支持 Windows 运行。
-
 ## 当前状态
 
 已经实现：
 
-- Unreal 运行时插件 `RinRinJs`
-- V8 的进程级初始化与关闭
-- V8 isolate/context 的创建与释放
-- 从 C++ 直接执行 JavaScript
-- ES Module 加载与依赖解析
-- `Content/Mods/Core` 下的示例脚本
-- 基于 WebSocket 的 V8 Inspector，可供 Chrome/Edge DevTools 调试
-- `/json/list` 等本地 Inspector 发现接口
-- C++ 与 JS 之间的值封装
-- 基于 `TExpected` 和 `FError` 的结构化错误/结果模型
-- 一个最小可运行的 `GameInstance` 集成示例
+- Unreal 运行时插件模块 `RinRinJs`。
+- V8 进程级初始化与关闭。
+- V8 isolate/context 创建与清理。
+- 从 C++ 直接执行 JavaScript。
+- ES Module 加载、依赖解析和模块缓存处理。
+- 通过 `rinrin.manifest.json` 加载脚本包。
+- 脚本生命周期：`start(context)`、`tick(deltaSeconds)`、`dispose()`。
+- `URinRinJsLabGameInstance` 集成：启动运行时，等待游戏世界进入 play，再加载脚本包并逐帧 tick JS。
+- 向 JavaScript 注入小型 `ue` bridge。
+- 通过 opaque actor handle 创建和控制 actor。
+- 通过控制台命令 `RinRinJs.Reload` 运行时重载脚本。
+- 基于 WebSocket 的 V8 Inspector，可使用 Chrome/Edge DevTools 调试。
+- `/json/list` 等本地 Inspector discovery endpoint。
+- 基于 `TExpected` 和 `FError` 的结构化错误/结果模型。
 
-仍在探索或尚未完成：
+当前 JavaScript bridge：
 
-- package/mod registry 与 manifest 加载
-- 用类型化参数调用 JS 导出函数的稳定公共 API
-- UObject / UFunction 绑定
-- promise / async 与 UE tick 或 latent action 的集成
-- 跨平台 V8 构建
-- 面向真实项目的打包与分发流程
+```text
+ue.log(...)
+ue.spawnActorByPath(assetPath, transform)
+ue.destroy(actorHandle)
+ue.setLocation(actorHandle, location)
+ue.getLocation(actorHandle)
+ue.setRotation(actorHandle, rotation)
+ue.setTransform(actorHandle, transform)
+ue.addWorldOffset(actorHandle, offset)
+ue.setVisible(actorHandle, visible)
+```
 
-当前不作为目标的内容：
+当前不提供：
 
-- Marketplace 级别的插件发布形态
-- 向后兼容的公共 API 承诺
-- 多平台二进制分发
-- 完整的 Node.js 兼容层或大而全的 JS 标准库环境
-
-## 运行确认
-
-要确认 JavaScript 运行时是否真的已经启动，可以直接查看 Unreal 日志(Log Category: LogJs)。
-
-建议重点确认：
-
-- `main` 模块已经成功加载完成；
-- JavaScript 里的 `console.log(...)` 输出已经进入 Unreal 日志；
-- 截图中高亮的部分显示示例脚本执行了简单加法，并得到了预期结果。
-
-![展示 JavaScript 模块加载与执行结果的 Unreal 日志截图](docs/images/runtime-verification-log.png)
+- 稳定的公共 API 兼容性承诺。
+- Marketplace 级别插件打包。
+- Node.js 兼容层。
+- 跨平台 V8 二进制。
+- 通用 UObject/UFunction 反射。
+- 完整 package/mod manager。
 
 ## 平台支持
 
@@ -76,175 +65,131 @@
 - Visual Studio 2022 / MSVC
 - Win64
 - C++20
-- 以 monolithic static library 方式链接 V8
+- V8 以 monolithic static library 方式链接
 
-仓库中包含 V8 头文件和 Windows Release 静态库：
+仓库期望 V8 头文件和 Win64 release 静态库位于：
 
 ```text
 Plugins/RinRinJs/ThirdParty/v8
 ```
 
-当前 V8 采用的是面向 MSVC/Win64 的单体静态库构建。关键构建参数如下：
-
-```gn
-is_component_build = false
-is_debug = false
-target_cpu = "x64"
-target_os = "win"
-
-v8_enable_i18n_support = false
-v8_monolithic = true
-v8_use_external_startup_data = false
-v8_enable_pointer_compression = true
-v8_jitless = false
-v8_enable_sandbox = true
-
-use_custom_libcxx = false
-treat_warnings_as_errors = false
-v8_symbol_level = 2
-strip_debug_info = false
-```
-
 ## 打开与编译
-
-正常情况下，这个项目应当被视为一个标准的 Unreal Engine 工程。编译由 Unreal Engine 和 Unreal Build Tool 负责，而不是依赖某个特定 IDE。
 
 推荐环境：
 
 - Unreal Engine 5.7
-- 安装了 C++ 桌面开发工具链的 Visual Studio 2022
+- 安装 C++ 桌面开发工具链的 Visual Studio 2022
 - 与当前 UE 工具链兼容的 Windows SDK
 
-clone 之后通常的首次流程：
+首次运行流程：
 
-1. 确认 `Plugins/RinRinJs/ThirdParty/v8` 中包含仓库附带的 V8 头文件和 Win64 静态库。
+1. 确认 `Plugins/RinRinJs/ThirdParty/v8` 中存在 V8 头文件和 Win64 库。
 2. 使用 Unreal Engine 5.7 打开 `RinRinJsLab.uproject`。
-3. 如果 Unreal 提示生成项目文件，则允许它生成。
-4. 从 Unreal Editor 中编译项目，或者在首次打开时让 Unreal 自动触发编译。
+3. 如果 Unreal 提示生成项目文件，允许生成。
+4. 从 Unreal Editor、Visual Studio 或 Unreal Build Tool 编译项目。
 
-说明：
+## 运行流程
 
-- 日常编译可以直接在 Unreal Editor 内完成。
-- Visual Studio 和 VSCode 都只是围绕同一套 UBT 构建链路的可选开发环境。
-- 只有在你希望使用 VSCode 的 workspace、IntelliSense 或 task 时，才需要额外生成 VSCode 相关工程文件。
-
-## 运行方式
-
-示例工程当前通过 `URinRinJsLabGameInstance` 启动 JavaScript 运行时。
+游戏模块通过 `URinRinJsLabGameInstance` 启动并驱动运行时。
 
 启动流程：
 
-1. Unreal 调用 `URinRinJsLabGameInstance::Init()`。
-2. 通过 `FModuleManager` 获取 `RinRinJs` 模块。
-3. 调用 `FRinRinJsModule::StartRuntime()`。
-4. 插件初始化 V8，并创建执行上下文。
-5. 游戏侧加载 `"main"` JavaScript 模块。
-6. 游戏侧执行一个测试表达式，目前是 `foo(2, 3)`。
+1. `URinRinJsLabGameInstance::Init()` 获取 `RinRinJs` 模块。
+2. 游戏调用 `FRinRinJsModule::StartRuntime()`。
+3. 插件初始化 V8 并创建执行上下文。
+4. 游戏 ticker 持续更新插件持有的 `UWorld`。
+5. 当 world 是 game world 且 `HasBegunPlay()` 为 true 后，加载 `Content/Mods/Core`。
+6. `FScriptHost` 读取 `rinrin.manifest.json`，加载 manifest 指定的 `main` module，注入 `globalThis.ue`，并调用 `start({ packageName })`。
+7. 每帧调用导出的 `tick(deltaSeconds)`，如果该函数存在。
 
 关闭流程：
 
-1. `URinRinJsLabGameInstance::Shutdown()` 再次获取插件模块。
-2. 调用 `FRinRinJsModule::StopRuntime()`。
-3. 插件释放已加载模块、Inspector、V8 context、isolate、allocator，以及进程级 V8 资源。
+1. `URinRinJsLabGameInstance::Shutdown()` 移除 ticker。
+2. 游戏卸载当前脚本包。
+3. `FScriptHost` 调用 `dispose()`，销毁 JS 创建的 actor，并清理 actor handle。
+4. 插件停止运行时并释放 V8 context/process 状态。
 
-当前示例中的入口模块解析为：
+## 脚本包
+
+当前脚本包位于：
 
 ```text
-main -> Content/Mods/Core/main.js
+Content/Mods/Core/
+  rinrin.manifest.json
+  package.json
+  main.js
 ```
 
-其余 ESM 相对导入则以导入方模块所在目录为基准进行解析。
+`rinrin.manifest.json`：
 
-## 基本调用方式
-
-当前对外的 C++ 入口是 `FRinRinJsModule`。
-
-示例 `GameInstance` 中的调用方式如下：
-
-```cpp
-if (FModuleManager::Get().IsModuleLoaded("RinRinJs"))
+```json
 {
-    FRinRinJsModule& Module =
-        FModuleManager::GetModuleChecked<FRinRinJsModule>("RinRinJs");
+    "name": "core-demo",
+    "version": "0.1.0",
+    "main": "main.js"
+}
+```
 
-    Module.StartRuntime();
+`main.js` 导出生命周期函数：
 
-    auto LoadResult = Module.LoadJsModule(
-        "main",
-        &URinRinJsLabGameInstance::resolveModulePath,
-        &URinRinJsLabGameInstance::LoadJavascriptFile);
+```js
+export function start(context) {
+    actor = ue.spawnActorByPath("/Engine/BasicShapes/Cube.Cube", {
+        location: { x: 200, y: 0, z: 120 },
+        rotation: { pitch: 0, yaw: 0, roll: 0 },
+        scale: { x: 1, y: 1, z: 1 },
+    });
+}
 
-    if (!LoadResult)
-    {
-        LoadResult.Error().Log(LogTemp, ELogVerbosity::Error);
-    }
+export function tick(deltaSeconds) {
+    // 移动或旋转 actor。
+}
 
-    auto EvalResult = Module.EvaluateString("foo(2, 3)");
-    if (!EvalResult)
-    {
-        EvalResult.Error().Log(LogTemp, ELogVerbosity::Error);
+export function dispose() {
+    if (actor) {
+        ue.destroy(actor);
+        actor = 0;
     }
 }
 ```
 
-宿主游戏当前需要提供两个 callback：
+当前 workflow 直接加载 JavaScript 源文件，不需要 TypeScript 或打包步骤。
 
-- `FResolveModuleIdFn`：把 import specifier 解析成模块 id，目前是标准化后的文件路径
-- `FLoadSourceByModuleIdFn`：按照模块 id 读取 UTF-8 JavaScript 源码
+## 重载脚本
 
-这种设计让文件系统策略保留在宿主层，而不是写死在 V8 层。后续如果要接入 pak、下载内容、虚拟文件系统或编辑器资源，也更容易扩展。
-
-## JavaScript 示例
-
-当前示例脚本位于：
+插件注册了控制台命令：
 
 ```text
-Content/Mods/Core
+RinRinJs.Reload
 ```
 
-`main.js`：
+可以从以下位置执行：
 
-```js
-import { bar } from './utils.js';
+- 游戏内控制台，通常按 `~` 打开；
+- Unreal Editor 的 Output Log 命令输入框。
 
-function foo(a, b) {
-    let x = bar(b);
-    console.log('In foo: bar(', b, ')=', x);
-    return a + bar(x);
-}
+重载流程：
 
-console.log('In main.js: foo(1,2)=', foo(1, 2));
+1. 如果当前 main module 导出了 `dispose()`，先调用它。
+2. 销毁 actor handle registry 中记录的 JS actor。
+3. 重建 V8 execution context。
+4. 重新读取 manifest 和源码文件。
+5. 加载并执行 main module。
+6. 再次调用 `start(context)`。
 
-globalThis.foo = foo;
-
-export { foo, bar };
-```
-
-`utils.js`：
-
-```js
-function bar(x) {
-    return x * 2;
-}
-
-globalThis.bar = bar;
-
-export { bar };
-```
-
-这里保留 `globalThis.foo = foo`，是因为当前直接求值路径仍然可以在 ESM 执行完成后调用全局函数。更理想的内部演进方向，是从 C++ 直接调用模块导出，并以类型化 API 传递参数。
+因此可以直接编辑 `Content/Mods/Core/main.js`，执行 `RinRinJs.Reload`，不重启编辑器即可看到行为变化。
 
 ## 使用 Chrome DevTools 调试
 
-当 V8 context 创建完成后，插件会同时启动 V8 Inspector transport。
+当 V8 context 创建后，插件会启动 V8 Inspector transport。
 
-默认本地端点：
+默认本地 WebSocket endpoint：
 
 ```text
 ws://127.0.0.1:9229/
 ```
 
-发现接口：
+Discovery endpoints：
 
 ```text
 http://127.0.0.1:9229/json
@@ -252,19 +197,19 @@ http://127.0.0.1:9229/json/list
 http://127.0.0.1:9229/json/version
 ```
 
-基本调试流程：
+基本流程：
 
-1. 在 Windows 上运行 Unreal 工程
-2. 打开 Chrome 或 Edge
-3. 访问 `chrome://inspect`
-4. 配置或检查 `127.0.0.1:9229`
-5. 连接暴露出来的 V8 target
+1. 运行 Unreal 项目。
+2. 打开 Chrome 或 Edge。
+3. 访问 `chrome://inspect`。
+4. 配置或检查 `127.0.0.1:9229`。
+5. 连接暴露出的 V8 target。
 
-当前 Inspector transport 默认仅允许本地访问。底层 HTTP/WebSocket 使用 CivetWeb，协议消息通过 Unreal ticker 驱动。
+Inspector transport 默认只面向本地访问，底层 HTTP/WebSocket 使用 CivetWeb。
 
 ## 项目结构
 
-更详细的源码结构、分层说明和依赖流向请见：
+更详细的源码结构、运行时分层和依赖流向请见：
 
 - English: [docs/project-map.md](docs/project-map.md)
 - 简体中文：[docs/project-map.zh-CN.md](docs/project-map.zh-CN.md)
@@ -272,26 +217,26 @@ http://127.0.0.1:9229/json/version
 
 ## 设计说明
 
-当前实现有意保留了几条清晰边界：
+当前实现保留了几条清晰边界：
 
-- Unreal 面向上层的 API 放在 `Public`
-- V8 相关类型尽量留在 `Private`
-- 模块解析与源码读取策略由宿主游戏负责
-- 运行错误通过 `TExpected` 返回，而不是只写日志
-- 浏览器调试能力被视为运行时体验的一部分，而不是事后补上的工具
-
-对于作品集项目来说，这种组织方式不仅展示了“功能是否可用”，也展示了我如何处理复杂原生依赖在大型引擎中的嵌入问题。
+- `FRinRinJsModule` 是 Unreal 侧插件入口。
+- V8 相关实现留在 `Private/V8`。
+- 脚本包生命周期位于 `Private/Runtime`。
+- JS 到 UE 的调用白名单位于 `Private/Bridge`。
+- 脚本文件解析被限制在 package root 内。
+- 运行时错误尽量通过 `TExpected` 和 `FError` 返回。
+- 暴露给 JS 的 actor 引用是整数 handle，不是裸 UObject 指针。
 
 ## 后续计划
 
-接下来大概率会继续推进：
+可能的下一步：
 
-- 完成 package/mod registry 与 manifest 设计
-- 把稳定的 `ExecuteJsFunction` API 暴露到 `FRinRinJsModule`
-- 直接调用 ES Module 的导出，而不是依赖全局函数
-- 扩展 `FValueIntoJs` / `FValueFromJs`，支持数组、对象和 Unreal 引用
-- 增加 UObject / UFunction 绑定
-- 处理 promise / microtask 与 Unreal tick 语义之间的关系
-- 改善 TypeScript 与 source map 调试体验
-- 清理旧的 ChakraCore 历史代码，或将其转入文档说明
-- 增补 Windows 下的编译和 smoke test 文档
+- 添加一个小型 debug UI，用于触发 reload 等常用运行时命令。
+- 将脚本包加载扩展为 package/mod registry，并明确 load order。
+- 定义 JS 创建 actor 与共享/全局 actor 的 ownership 策略。
+- 在保持显式授权的前提下扩展 bridge，不局限于 `AStaticMeshActor`。
+- 增加数组、对象、Unreal 引用等 typed C++/JS value conversion。
+- 在明确 allowlist 后加入 UObject/UFunction 绑定。
+- 改善 reload 与 DevTools session、状态检查之间的交互。
+- 补充 Windows 自动编译和 smoke test 文档。
+- 决定旧 ChakraCore 代码作为历史保留，还是从 active plugin 中移除。

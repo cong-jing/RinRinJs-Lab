@@ -366,7 +366,7 @@ namespace rinrin::uejs
         }
         actor->SetActorScale3D(transform.GetScale3D());
 #if WITH_EDITOR
-        actor->SetActorLabel(TEXT("RinRinJsDemoActor"));
+        actor->SetActorLabel(actor->GetName());
 #endif
 
         const FActorHandleRegistry::FHandle handle = registry->Register(actor);

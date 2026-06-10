@@ -12,6 +12,8 @@
 
 演示视频：展示 JavaScript 代码修改、Unreal 运行画面、hot reload，以及使用 Chrome DevTools 进行调试。
 
+https://github.com/user-attachments/assets/be83b3a8-c648-420e-9dd5-5a582635e4c4
+
 - English: [README.md](README.md)
 - 简体中文：`README.zh-CN.md`
 - 日本語: [README.ja.md](README.ja.md)

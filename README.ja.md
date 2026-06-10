@@ -8,7 +8,9 @@
 
 このリポジトリは主にポートフォリオおよびソースコード展示用です。ネイティブエンジン統合、V8 組み込み、Unreal モジュール境界、構造化エラー処理、Chrome/Edge DevTools によるデバッグ、JavaScript 駆動の gameplay loop を示します。
 
-Demo video: JavaScript editing, Unreal runtime playback, hot reload, and Chrome DevTools debugging.
+デモ動画: JavaScript の編集、Unreal の実行画面、ホットリロード、そして Chrome DevTools によるデバッグ。
+
+https://github.com/user-attachments/assets/be83b3a8-c648-420e-9dd5-5a582635e4c4
 
 Language versions:
 

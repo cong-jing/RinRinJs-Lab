@@ -1,5 +1,11 @@
 # RinRinJs-Lab / RinRinJs
 
+语言版本：
+
+- English: [README.md](README.md)
+- 简体中文：`README.zh-CN.md`
+- 日本語: [README.ja.md](README.ja.md)
+
 ## 维护说明
 
 这个仓库目前主要用于作品集展示和招聘评估。我现阶段无法为它提供持续维护、功能承诺或对外支持。
@@ -8,15 +14,9 @@
 
 这个仓库主要作为作品集和源码展示材料，用来体现原生引擎集成、第三方运行时嵌入、Unreal 模块边界、结构化错误处理、浏览器调试，以及脚本驱动玩法循环的实现方式。
 
-语言版本：
-
 演示视频：展示 JavaScript 代码修改、Unreal 运行画面、hot reload，以及使用 Chrome DevTools 进行调试。
 
 https://github.com/user-attachments/assets/be83b3a8-c648-420e-9dd5-5a582635e4c4
-
-- English: [README.md](README.md)
-- 简体中文：`README.zh-CN.md`
-- 日本語: [README.ja.md](README.ja.md)
 
 ## 当前状态
 

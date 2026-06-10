@@ -1,5 +1,11 @@
 # RinRinJs-Lab / RinRinJs
 
+Language versions:
+
+- English: [README.md](README.md)
+- 简体中文: [README.zh-CN.md](README.zh-CN.md)
+- 日本語: `README.ja.md`
+
 ## Maintenance Notice
 
 このリポジトリは主にポートフォリオおよび採用選考向けの公開物として置いています。現時点では継続的な保守、機能追加の約束、外部サポートは提供できません。
@@ -11,12 +17,6 @@
 デモ動画: JavaScript の編集、Unreal の実行画面、ホットリロード、そして Chrome DevTools によるデバッグ。
 
 https://github.com/user-attachments/assets/be83b3a8-c648-420e-9dd5-5a582635e4c4
-
-Language versions:
-
-- English: [README.md](README.md)
-- 简体中文: [README.zh-CN.md](README.zh-CN.md)
-- 日本語: `README.ja.md`
 
 ## Current Status
 
